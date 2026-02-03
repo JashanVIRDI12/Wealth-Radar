@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchWithCache } from '../lib/browserCache';
 
 type Headline = {
   title: string;
@@ -9,15 +10,22 @@ type Headline = {
   publishedAt: string;
 };
 
+type NewsResponse = {
+  headlines?: Headline[];
+  error?: string;
+  cached?: boolean;
+};
+
 export default function NewsHeadlines() {
   const [headlines, setHeadlines] = useState<Headline[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [browserCached, setBrowserCached] = useState(false);
 
   useEffect(() => {
-    fetch('/api/news')
-      .then((res) => res.json())
-      .then((data) => {
+    fetchWithCache<NewsResponse>('news', '/api/news')
+      .then(({ data, fromBrowserCache }) => {
+        setBrowserCached(fromBrowserCache);
         if (data.error && !data.headlines) {
           setError(data.error);
           return;

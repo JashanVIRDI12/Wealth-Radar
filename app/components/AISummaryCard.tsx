@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchWithCache, getCache, getCacheAge, clearCache } from '../lib/browserCache';
 
 type AISummary = {
     marketBias: 'bullish' | 'bearish' | 'neutral';
@@ -97,17 +98,26 @@ export default function AISummaryCard() {
     const [summary, setSummary] = useState<AISummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [browserCached, setBrowserCached] = useState(false);
+    const [browserCacheAge, setBrowserCacheAge] = useState<number | null>(null);
 
     useEffect(() => {
-        async function fetchSummary() {
+        async function fetchSummary(forceRefresh = false) {
             try {
                 setLoading(true);
                 setError(null);
-                const res = await fetch('/api/ai-summary');
-                const data = await res.json();
 
-                if (!res.ok) {
-                    setError(data.details || data.error || 'Failed to load summary');
+                // If force refresh, clear browser cache first
+                if (forceRefresh) {
+                    clearCache('aiSummary');
+                }
+
+                const { data, fromBrowserCache } = await fetchWithCache<AISummary>('aiSummary', '/api/ai-summary');
+                setBrowserCached(fromBrowserCache);
+                setBrowserCacheAge(getCacheAge('aiSummary'));
+
+                if (data.error && !data.marketBias) {
+                    setError(data.error || 'Failed to load summary');
                     return;
                 }
 
@@ -127,7 +137,7 @@ export default function AISummaryCard() {
         fetchSummary();
 
         // Auto-refresh every 30 minutes to check if cache has expired
-        const interval = setInterval(fetchSummary, 30 * 60 * 1000);
+        const interval = setInterval(() => fetchSummary(true), 30 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
 
@@ -187,7 +197,9 @@ export default function AISummaryCard() {
                 <div>
                     <h2 className="text-lg font-semibold text-zinc-50">AI Trading Summary</h2>
                     <p className="text-xs text-zinc-600 mt-0.5">
-                        Auto-refreshes • {cached ? `Cached ${cacheAge}m ago` : 'Fresh data'}
+                        Auto-refreshes •
+                        {browserCached && <span className="text-blue-400"> 📦 Browser{browserCacheAge ? ` ${browserCacheAge}m` : ''}</span>}
+                        {!browserCached && (cached ? ` 🖥 Server ${cacheAge}m ago` : ' Fresh data')}
                         {nextRefresh && ` • Refreshes in ${nextRefresh}m`}
                     </p>
                 </div>

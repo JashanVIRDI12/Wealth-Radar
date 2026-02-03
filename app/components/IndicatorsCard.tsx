@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchWithCache, getCacheAge } from '../lib/browserCache';
 
 type Trend = 'uptrend' | 'downtrend' | 'sideways';
 
@@ -13,6 +14,8 @@ type Indicators = {
     lastUpdated: string;
     cached?: boolean;
 };
+
+type IndicatorsResponse = Indicators & { error?: string };
 
 function trendLabel(t: Trend): string {
     if (t === 'uptrend') return 'Uptrend';
@@ -30,11 +33,12 @@ export default function IndicatorsCard() {
     const [data, setData] = useState<Indicators | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [browserCached, setBrowserCached] = useState(false);
 
     useEffect(() => {
-        fetch('/api/indicators')
-            .then((res) => res.json())
-            .then((json) => {
+        fetchWithCache<IndicatorsResponse>('indicators', '/api/indicators')
+            .then(({ data: json, fromBrowserCache }) => {
+                setBrowserCached(fromBrowserCache);
                 if (json.error && !json.price) {
                     setError(json.error);
                     return;
@@ -98,9 +102,14 @@ export default function IndicatorsCard() {
                         {trendLabel(data.trend)}
                     </span>
                 </div>
-                {data.cached && (
-                    <span className="text-xs text-zinc-600">Cached · 30m</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {browserCached && (
+                        <span className="text-xs text-blue-400">📦 Browser</span>
+                    )}
+                    {data.cached && (
+                        <span className="text-xs text-zinc-600">🖥 Server · 30m</span>
+                    )}
+                </div>
             </div>
         </div>
     );

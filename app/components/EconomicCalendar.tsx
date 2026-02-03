@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchWithCache } from '../lib/browserCache';
 
 type ForexFactoryEvent = {
     id: string;
@@ -26,11 +27,12 @@ export default function EconomicCalendar() {
     const [data, setData] = useState<CalendarData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [browserCached, setBrowserCached] = useState(false);
 
     useEffect(() => {
-        fetch('/api/calendar')
-            .then((res) => res.json())
-            .then((json) => {
+        fetchWithCache<CalendarData>('calendar', '/api/calendar')
+            .then(({ data: json, fromBrowserCache }) => {
+                setBrowserCached(fromBrowserCache);
                 if (json.error && !json.events) {
                     setError(json.error);
                     return;
@@ -211,9 +213,9 @@ export default function EconomicCalendar() {
                                         {formatEventTime(event.date)}
                                     </span>
                                     <span className={`font-semibold ${event.hoursToEvent < 0 ? 'text-blue-400' :
-                                            event.hoursToEvent < 2 ? 'text-red-400' :
-                                                event.hoursToEvent < 6 ? 'text-amber-400' :
-                                                    'text-zinc-400'
+                                        event.hoursToEvent < 2 ? 'text-red-400' :
+                                            event.hoursToEvent < 6 ? 'text-amber-400' :
+                                                'text-zinc-400'
                                         }`}>
                                         {formatHoursToEvent(event.hoursToEvent)}
                                     </span>
@@ -257,9 +259,14 @@ export default function EconomicCalendar() {
                 <span>
                     {data.events.length} USD/JPY event{data.events.length !== 1 ? 's' : ''}
                 </span>
-                <span>
-                    {data.stale ? 'Stale · ' : ''}{data.cached ? 'Cached · 30m' : 'Fresh'}
-                </span>
+                <div className="flex items-center gap-2">
+                    {browserCached && (
+                        <span className="text-xs text-blue-400">📦 Browser</span>
+                    )}
+                    <span>
+                        {data.stale ? 'Stale · ' : ''}{data.cached ? '🖥 Server · 30m' : 'Fresh'}
+                    </span>
+                </div>
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchWithCache } from '../lib/browserCache';
 
 type MacroData = {
     us10yYield: number | null;
@@ -10,15 +11,18 @@ type MacroData = {
     cached?: boolean;
 };
 
+type MacroResponse = MacroData & { error?: string };
+
 export default function MacroCard() {
     const [data, setData] = useState<MacroData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [browserCached, setBrowserCached] = useState(false);
 
     useEffect(() => {
-        fetch('/api/macro')
-            .then((res) => res.json())
-            .then((json) => {
+        fetchWithCache<MacroResponse>('macro', '/api/macro')
+            .then(({ data: json, fromBrowserCache }) => {
+                setBrowserCached(fromBrowserCache);
                 if (json.error && !json.us10yYield && !json.usInflation && !json.japanInflation) {
                     setError(json.error);
                     return;
@@ -116,10 +120,10 @@ export default function MacroCard() {
             <div className="bg-zinc-800/60 rounded-xl p-4 border border-zinc-700/50">
                 <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Inflation Spread</div>
                 <div className={`text-xl font-semibold ${inflationDiff !== null
-                        ? inflationDiff > 0
-                            ? 'text-emerald-400'
-                            : 'text-red-400'
-                        : 'text-zinc-400'
+                    ? inflationDiff > 0
+                        ? 'text-emerald-400'
+                        : 'text-red-400'
+                    : 'text-zinc-400'
                     }`}>
                     {inflationDiff !== null ? (inflationDiff > 0 ? '+' : '') + inflationDiff.toFixed(2) + '%' : '—'}
                 </div>
@@ -131,9 +135,14 @@ export default function MacroCard() {
                 <div className="text-xs text-zinc-600">
                     Last updated: {new Date(data.lastUpdated).toLocaleString()}
                 </div>
-                {data.cached && (
-                    <span className="text-xs text-zinc-600">Cached · 24h</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {browserCached && (
+                        <span className="text-xs text-blue-400">📦 Browser</span>
+                    )}
+                    {data.cached && (
+                        <span className="text-xs text-zinc-600">🖥 Server · 24h</span>
+                    )}
+                </div>
             </div>
         </div>
     );
