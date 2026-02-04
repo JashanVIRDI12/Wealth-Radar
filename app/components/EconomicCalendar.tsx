@@ -45,21 +45,31 @@ export default function EconomicCalendar() {
 
     if (loading) {
         return (
-            <div className="text-zinc-500 text-sm animate-pulse">
-                Loading economic calendar…
+            <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-zinc-800/30 animate-pulse">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="h-4 bg-zinc-700/50 rounded w-32"></div>
+                            <div className="h-5 bg-zinc-700/50 rounded w-16"></div>
+                        </div>
+                        <div className="h-3 bg-zinc-700/50 rounded w-48"></div>
+                    </div>
+                ))}
             </div>
         );
     }
     if (error) {
         return (
-            <p className="text-zinc-500 text-sm" role="status">
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                 {error}
-            </p>
+            </div>
         );
     }
     if (!data || !data.events || data.events.length === 0) {
         return (
-            <p className="text-zinc-500 text-sm">No upcoming high-impact events for USD/JPY.</p>
+            <div className="p-4 rounded-xl bg-zinc-800/40 text-zinc-500 text-sm text-center">
+                No upcoming high-impact events.
+            </div>
         );
     }
 
@@ -76,43 +86,29 @@ export default function EconomicCalendar() {
         });
     };
 
-    // Get impact badge color
-    const getImpactColor = (impact: string) => {
-        switch (impact) {
-            case 'High':
-                return 'bg-red-500/20 text-red-400 border-red-500/30';
-            case 'Medium':
-                return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-            case 'Low':
-                return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-            default:
-                return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30';
-        }
-    };
-
     // Get event state badge
     const getEventStateBadge = (state: ForexFactoryEvent['eventState']) => {
         switch (state) {
             case 'EVENT_RISK':
                 return {
-                    text: '⚠️ RISK',
-                    className: 'bg-red-500/30 text-red-300 border-red-500/50 animate-pulse',
+                    text: 'RISK',
+                    className: 'bg-red-500/20 text-red-400 border-red-500/30',
                 };
             case 'CAUTION':
                 return {
                     text: '⏰ SOON',
-                    className: 'bg-amber-500/30 text-amber-300 border-amber-500/50',
+                    className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
                 };
             case 'POST_EVENT':
                 return {
-                    text: '📊 OUT',
-                    className: 'bg-blue-500/30 text-blue-300 border-blue-500/50',
+                    text: 'OUT',
+                    className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
                 };
             case 'CLEAR':
             default:
                 return {
-                    text: '✓ CLEAR',
-                    className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                    text: '✓',
+                    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
                 };
         }
     };
@@ -145,21 +141,7 @@ export default function EconomicCalendar() {
             return `in ${hours.toFixed(1)}h`;
         }
         const days = Math.floor(hours / 24);
-        return `in ${days}d ${Math.round(hours % 24)}h`;
-    };
-
-    // Get row styling based on event state
-    const getRowStyle = (state: ForexFactoryEvent['eventState']) => {
-        switch (state) {
-            case 'EVENT_RISK':
-                return 'border-red-500/50 ring-2 ring-red-500/20 bg-red-900/10';
-            case 'CAUTION':
-                return 'border-amber-500/40 ring-1 ring-amber-500/10';
-            case 'POST_EVENT':
-                return 'border-blue-500/40 bg-blue-900/10';
-            default:
-                return 'border-zinc-700/50 hover:border-zinc-600/50';
-        }
+        return `in ${days}d`;
     };
 
     // Check if there's an active event risk
@@ -167,52 +149,49 @@ export default function EconomicCalendar() {
     const hasCaution = data.events.some(e => e.eventState === 'CAUTION');
 
     return (
-        <div className="space-y-3" aria-label="Economic Calendar">
+        <div className="space-y-3">
             {/* Event Risk Warning */}
             {hasEventRisk && (
-                <div className="bg-red-900/30 border border-red-500/40 rounded-lg p-3 animate-pulse">
-                    <p className="text-sm text-red-300 font-medium">
-                        ⚠️ <strong>EVENT RISK ACTIVE</strong> — Bias neutral, expect fake moves, reduce size
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 animate-pulse">
+                    <p className="text-sm text-red-400 font-medium">
+                        <strong>EVENT RISK</strong> — Expect volatility
                     </p>
                 </div>
             )}
 
             {!hasEventRisk && hasCaution && (
-                <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-3">
-                    <p className="text-xs text-amber-300">
-                        ⏰ High-impact event approaching — Consider reducing exposure
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                    <p className="text-xs text-amber-400">
+                        ⏰ High-impact event approaching
                     </p>
                 </div>
             )}
 
+            {/* Events List */}
             {data.events.map((event) => {
                 const stateBadge = getEventStateBadge(event.eventState);
 
                 return (
                     <div
                         key={event.id}
-                        className={`bg-zinc-800/60 rounded-xl p-4 border transition-all duration-300 ${getRowStyle(event.eventState)}`}
+                        className={`p-3 rounded-xl border transition-all ${event.eventState === 'EVENT_RISK'
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : event.eventState === 'CAUTION'
+                                ? 'bg-amber-500/5 border-amber-500/20'
+                                : 'bg-zinc-800/30 border-zinc-700/20 hover:border-zinc-600/40'
+                            }`}
                     >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1.5">
-                                    <span className="text-lg" title={event.currency}>
-                                        {getCurrencyFlag(event.currency)}
-                                    </span>
-                                    <h4 className="text-sm font-medium text-zinc-100 truncate">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-base">{getCurrencyFlag(event.currency)}</span>
+                                    <h4 className="text-sm font-medium text-zinc-200 truncate">
                                         {event.event}
                                     </h4>
-                                    <span
-                                        className={`px-1.5 py-0.5 text-xs font-medium rounded border ${getImpactColor(event.impact)}`}
-                                    >
-                                        {event.impact}
-                                    </span>
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-zinc-500 flex-wrap">
-                                    <span className="font-medium text-zinc-400">
-                                        {formatEventTime(event.date)}
-                                    </span>
-                                    <span className={`font-semibold ${event.hoursToEvent < 0 ? 'text-blue-400' :
+                                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                    <span>{formatEventTime(event.date)}</span>
+                                    <span className={`font-medium ${event.hoursToEvent < 0 ? 'text-blue-400' :
                                         event.hoursToEvent < 2 ? 'text-red-400' :
                                             event.hoursToEvent < 6 ? 'text-amber-400' :
                                                 'text-zinc-400'
@@ -220,52 +199,38 @@ export default function EconomicCalendar() {
                                         {formatHoursToEvent(event.hoursToEvent)}
                                     </span>
                                 </div>
-                                {(event.forecast || event.previous) && (
-                                    <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
-                                        {event.forecast && (
-                                            <span>Fcst: <span className="text-zinc-300">{event.forecast}</span></span>
-                                        )}
-                                        {event.previous && (
-                                            <span>Prev: <span className="text-zinc-300">{event.previous}</span></span>
-                                        )}
-                                    </div>
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-lg border shrink-0 ${stateBadge.className}`}>
+                                {stateBadge.text}
+                            </span>
+                        </div>
+                        {(event.forecast || event.previous) && (
+                            <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
+                                {event.forecast && (
+                                    <span>Fcst: <span className="text-zinc-400">{event.forecast}</span></span>
+                                )}
+                                {event.previous && (
+                                    <span>Prev: <span className="text-zinc-400">{event.previous}</span></span>
                                 )}
                             </div>
-                            <div className="shrink-0">
-                                <span
-                                    className={`px-2 py-1 text-xs font-bold rounded border ${stateBadge.className}`}
-                                >
-                                    {stateBadge.text}
-                                </span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 );
             })}
 
-            {/* Trading Logic Summary */}
-            <div className="bg-zinc-800/40 border border-zinc-700/30 rounded-lg p-3 mt-2">
-                <p className="text-xs text-zinc-500">
-                    <strong className="text-zinc-400">Event Logic:</strong>{' '}
-                    <span className="text-red-400">RISK</span> = Neutral bias | {' '}
-                    <span className="text-amber-400">SOON</span> = Reduce size | {' '}
-                    <span className="text-blue-400">OUT</span> = Follow momentum | {' '}
-                    <span className="text-emerald-400">CLEAR</span> = Trade structure
-                </p>
-            </div>
-
             {/* Cache status */}
-            <div className="flex items-center justify-between text-xs text-zinc-600 pt-1">
-                <span>
-                    {data.events.length} USD/JPY event{data.events.length !== 1 ? 's' : ''}
-                </span>
+            <div className="flex items-center justify-between pt-2 text-xs text-zinc-600">
+                <span>{data.events.length} event{data.events.length !== 1 ? 's' : ''}</span>
                 <div className="flex items-center gap-2">
                     {browserCached && (
-                        <span className="text-xs text-blue-400">📦 Browser</span>
+                        <span className="flex items-center gap-1 text-blue-400">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                            Browser
+                        </span>
                     )}
-                    <span>
-                        {data.stale ? 'Stale · ' : ''}{data.cached ? '🖥 Server · 30m' : 'Fresh'}
-                    </span>
+                    <span>{data.cached ? '30m cache' : 'Fresh'}</span>
                 </div>
             </div>
         </div>

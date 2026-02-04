@@ -4,12 +4,14 @@ Cache durations are set so you stay under each provider's free-tier / rate limit
 
 | API | Limit (free tier) | Our cache | Max requests/day |
 |-----|-------------------|-----------|------------------|
+| **Yahoo Finance** (indicators) | **UNLIMITED** (scraping) | **1 min** | ∞ |
+| **Yahoo Finance** (pivots/ATR) | **UNLIMITED** (scraping) | 1 hour | ∞ |
 | **NewsAPI** | 100 requests/day | 15 min | ~96 |
-| **Twelve Data** (price) | 800 credits/day, 8 credits/min | 30 min | ~48 |
-| **Twelve Data** (indicators) | 800 credits/day, 8 credits/min | 30 min | ~48 runs (~192 credits) |
 | **FRED** (macro) | Rate-limited (429 if exceeded) | 24 hours | 3 |
-| **RapidAPI Twitter** (tweets) | Free: 1000 req/hour, 500k/month | 2 hours | ~12 |
-| **OpenRouter** (AI bias) | Free tier by model | On demand | User-triggered |
+| **FMP** (calendar) | Free tier | 30 min | ~48 |
+| **OpenRouter** (AI) | Free tier by model | 1 hour | ~24 |
+
+> ⚡ **Primary data (Price, RSI, EMA, ATR, Pivots) now uses FREE Yahoo Finance scraping with no API limits!**
 
 ## Two-Tier Caching System
 
@@ -23,7 +25,8 @@ We use a **two-tier caching system** to minimize API usage:
 
 | Data | Browser Cache TTL |
 |------|-------------------|
-| Indicators | 25 min |
+| **Indicators (Free)** | **1 min** ⚡ |
+| Pivots/ATR | 55 min |
 | Macro | 23 hours |
 | News | 12 min |
 | Calendar | 25 min |

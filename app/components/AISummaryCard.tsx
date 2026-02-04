@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchWithCache, getCache, getCacheAge, clearCache } from '../lib/browserCache';
+import { fetchWithCache, getCacheAge, clearCache } from '../lib/browserCache';
 
 type AISummary = {
     marketBias: 'bullish' | 'bearish' | 'neutral';
@@ -39,30 +39,30 @@ type AISummary = {
 };
 
 // Color utilities
+function getBiasGradient(bias: string): string {
+    if (bias === 'bullish') return 'from-emerald-500 to-teal-600';
+    if (bias === 'bearish') return 'from-red-500 to-rose-600';
+    return 'from-amber-500 to-orange-600';
+}
+
 function getBiasColor(bias: string): string {
     if (bias === 'bullish') return 'text-emerald-400';
     if (bias === 'bearish') return 'text-red-400';
     return 'text-amber-400';
 }
 
-function getBiasBg(bias: string): string {
-    if (bias === 'bullish') return 'bg-emerald-500/10 border-emerald-500/30';
-    if (bias === 'bearish') return 'bg-red-500/10 border-red-500/30';
-    return 'bg-amber-500/10 border-amber-500/30';
-}
-
-function getActionColor(action: string): string {
-    if (action === 'buy') return 'text-emerald-400';
-    if (action === 'sell') return 'text-red-400';
-    if (action === 'wait') return 'text-amber-400';
-    return 'text-zinc-400';
+function getActionGradient(action: string): string {
+    if (action === 'buy') return 'from-emerald-500 to-teal-600';
+    if (action === 'sell') return 'from-red-500 to-rose-600';
+    if (action === 'wait') return 'from-amber-500 to-orange-600';
+    return 'from-zinc-500 to-zinc-600';
 }
 
 function getActionBg(action: string): string {
-    if (action === 'buy') return 'bg-emerald-500/20';
-    if (action === 'sell') return 'bg-red-500/20';
-    if (action === 'wait') return 'bg-amber-500/20';
-    return 'bg-zinc-500/20';
+    if (action === 'buy') return 'bg-emerald-500/10 border-emerald-500/30';
+    if (action === 'sell') return 'bg-red-500/10 border-red-500/30';
+    if (action === 'wait') return 'bg-amber-500/10 border-amber-500/30';
+    return 'bg-zinc-500/10 border-zinc-500/30';
 }
 
 function getConfidenceColor(conf: string): string {
@@ -75,12 +75,6 @@ function getRiskColor(risk: string): string {
     if (risk === 'high') return 'text-red-400';
     if (risk === 'medium') return 'text-amber-400';
     return 'text-emerald-400';
-}
-
-function getRiskBg(risk: string): string {
-    if (risk === 'high') return 'bg-red-500/10';
-    if (risk === 'medium') return 'bg-amber-500/10';
-    return 'bg-emerald-500/10';
 }
 
 function formatTime(isoString: string): string {
@@ -100,58 +94,60 @@ export default function AISummaryCard() {
     const [error, setError] = useState<string | null>(null);
     const [browserCached, setBrowserCached] = useState(false);
     const [browserCacheAge, setBrowserCacheAge] = useState<number | null>(null);
+    const [isRegenerating, setIsRegenerating] = useState(false);
+
+    async function fetchSummary(forceRefresh = false) {
+        try {
+            if (forceRefresh) {
+                setIsRegenerating(true);
+                clearCache('aiSummary');
+            } else {
+                setLoading(true);
+            }
+            setError(null);
+
+            const { data, fromBrowserCache } = await fetchWithCache<AISummary>('aiSummary', '/api/ai-summary');
+            setBrowserCached(fromBrowserCache);
+            setBrowserCacheAge(getCacheAge('aiSummary'));
+
+            if (data.error && !data.marketBias) {
+                setError(data.error || 'Failed to load summary');
+                return;
+            }
+
+            if (data.marketBias && data.technicalAnalysis && data.tradingRecommendation) {
+                setSummary(data);
+            } else {
+                setError('Invalid summary format received');
+            }
+        } catch (err) {
+            setError('Failed to fetch AI summary');
+            console.error(err);
+        } finally {
+            setLoading(false);
+            setIsRegenerating(false);
+        }
+    }
 
     useEffect(() => {
-        async function fetchSummary(forceRefresh = false) {
-            try {
-                setLoading(true);
-                setError(null);
-
-                // If force refresh, clear browser cache first
-                if (forceRefresh) {
-                    clearCache('aiSummary');
-                }
-
-                const { data, fromBrowserCache } = await fetchWithCache<AISummary>('aiSummary', '/api/ai-summary');
-                setBrowserCached(fromBrowserCache);
-                setBrowserCacheAge(getCacheAge('aiSummary'));
-
-                if (data.error && !data.marketBias) {
-                    setError(data.error || 'Failed to load summary');
-                    return;
-                }
-
-                if (data.marketBias && data.technicalAnalysis && data.tradingRecommendation) {
-                    setSummary(data);
-                } else {
-                    setError('Invalid summary format received');
-                }
-            } catch (err) {
-                setError('Failed to fetch AI summary');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        }
-
         fetchSummary();
-
-        // Auto-refresh every 30 minutes to check if cache has expired
-        const interval = setInterval(() => fetchSummary(true), 30 * 60 * 1000);
+        const interval = setInterval(() => fetchSummary(true), 60 * 60 * 1000); // 1 hour
         return () => clearInterval(interval);
     }, []);
 
     if (loading) {
         return (
-            <div className="bg-zinc-900 rounded-2xl p-6 shadow-2xl border border-zinc-800">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="h-4 w-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-zinc-400">Generating AI Summary...</span>
+            <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-800 animate-pulse"></div>
+                    <div>
+                        <div className="h-5 bg-zinc-800 rounded w-40 mb-2 animate-pulse"></div>
+                        <div className="h-3 bg-zinc-800 rounded w-24 animate-pulse"></div>
+                    </div>
                 </div>
-                <div className="space-y-3">
-                    <div className="h-4 bg-zinc-800 rounded animate-pulse w-3/4" />
-                    <div className="h-4 bg-zinc-800 rounded animate-pulse w-1/2" />
-                    <div className="h-4 bg-zinc-800 rounded animate-pulse w-2/3" />
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div className="h-32 bg-zinc-800/50 rounded-xl animate-pulse"></div>
+                    <div className="h-32 bg-zinc-800/50 rounded-xl animate-pulse"></div>
                 </div>
             </div>
         );
@@ -159,8 +155,15 @@ export default function AISummaryCard() {
 
     if (error && !summary) {
         return (
-            <div className="bg-zinc-900 rounded-2xl p-6 shadow-2xl border border-zinc-800">
-                <h2 className="text-lg font-semibold text-zinc-50 mb-3">AI Trading Summary</h2>
+            <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-lg font-semibold text-white">AI Trading Summary</h2>
+                </div>
                 <p className="text-red-400 text-sm">{error}</p>
             </div>
         );
@@ -168,8 +171,15 @@ export default function AISummaryCard() {
 
     if (!summary) {
         return (
-            <div className="bg-zinc-900 rounded-2xl p-6 shadow-2xl border border-zinc-800">
-                <h2 className="text-lg font-semibold text-zinc-50 mb-3">AI Trading Summary</h2>
+            <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-lg font-semibold text-white">AI Trading Summary</h2>
+                </div>
                 <p className="text-zinc-500 text-sm">No summary available</p>
             </div>
         );
@@ -191,121 +201,129 @@ export default function AISummaryCard() {
     } = summary;
 
     return (
-        <div className="bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-800 overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold text-zinc-50">AI Trading Summary</h2>
-                    <p className="text-xs text-zinc-600 mt-0.5">
-                        Auto-refreshes •
-                        {browserCached && <span className="text-blue-400"> 📦 Browser{browserCacheAge ? ` ${browserCacheAge}m` : ''}</span>}
-                        {!browserCached && (cached ? ` 🖥 Server ${cacheAge}m ago` : ' Fresh data')}
-                        {nextRefresh && ` • Refreshes in ${nextRefresh}m`}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {stale && (
-                        <span className="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">
-                            Stale
-                        </span>
-                    )}
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="p-6 border-b border-zinc-800/50">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-semibold text-white">AI Trading Summary</h2>
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                                {browserCached && <span className="text-blue-400">📦 Browser {browserCacheAge}m</span>}
+                                {!browserCached && (cached ? `🖥 Server ${cacheAge}m` : 'Fresh')}
+                                {nextRefresh && ` • Refreshes in ${nextRefresh}m`}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {stale && (
+                            <span className="badge badge-amber">Stale</span>
+                        )}
+                        {/* Regenerate Button */}
+                        <button
+                            onClick={() => fetchSummary(true)}
+                            disabled={isRegenerating}
+                            className={`p-2.5 rounded-xl border transition-all ${isRegenerating
+                                    ? 'bg-violet-500/20 border-violet-500/30 cursor-not-allowed'
+                                    : 'bg-zinc-800/50 border-zinc-700/30 hover:bg-violet-500/20 hover:border-violet-500/30'
+                                }`}
+                            title="Regenerate AI Summary"
+                        >
+                            <svg
+                                className={`w-5 h-5 text-violet-400 ${isRegenerating ? 'animate-spin' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                        {/* Bias Badge */}
+                        <div className={`px-4 py-2 rounded-xl bg-gradient-to-r ${getBiasGradient(marketBias)} shadow-lg`}>
+                            <span className="text-white font-bold text-lg">
+                                {marketBias.toUpperCase()}
+                            </span>
+                            <span className="text-white/70 text-sm ml-2">
+                                ({biasStrength})
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Executive Summary & Main Bias */}
-            <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-800/30">
-                <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <div className={`px-3 py-1.5 rounded-lg border ${getBiasBg(marketBias)}`}>
-                        <span className={`font-bold text-lg ${getBiasColor(marketBias)}`}>
-                            {marketBias.toUpperCase()}
-                        </span>
-                        <span className="text-zinc-500 text-sm ml-2">
-                            ({biasStrength})
-                        </span>
-                    </div>
-                    <span className="text-zinc-600">•</span>
-                    <span className="text-xs text-zinc-500">
-                        Generated {formatTime(generatedAt)}
-                    </span>
-                </div>
-                <p className="text-zinc-300 text-sm leading-relaxed">{executiveSummary}</p>
+            {/* Executive Summary */}
+            <div className="p-6 bg-zinc-800/20 border-b border-zinc-800/50">
+                <p className="text-zinc-300 leading-relaxed">{executiveSummary}</p>
+                <p className="text-xs text-zinc-600 mt-2">Generated at {formatTime(generatedAt)}</p>
             </div>
 
             {/* Trading Recommendation - Prominent */}
-            <div className={`px-6 py-4 border-b border-zinc-800 ${getActionBg(tradingRecommendation.action)}`}>
+            <div className={`p-6 border-b border-zinc-800/50 ${getActionBg(tradingRecommendation.action)}`}>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <div className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Recommendation</div>
-                        <div className="flex items-center gap-3">
-                            <span className={`text-2xl font-bold ${getActionColor(tradingRecommendation.action)}`}>
-                                {tradingRecommendation.action.toUpperCase()}
-                            </span>
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-zinc-500">Confidence:</span>
-                                <span className={getConfidenceColor(tradingRecommendation.confidence)}>
-                                    {tradingRecommendation.confidence}
+                        <div className="text-xs text-zinc-500 uppercase tracking-wide mb-2">Recommendation</div>
+                        <div className="flex items-center gap-4">
+                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getActionGradient(tradingRecommendation.action)} flex items-center justify-center shadow-lg`}>
+                                <span className="text-white font-bold text-xl">
+                                    {tradingRecommendation.action === 'buy' ? '↑' :
+                                        tradingRecommendation.action === 'sell' ? '↓' :
+                                            tradingRecommendation.action === 'wait' ? '⏸' : '—'}
                                 </span>
                             </div>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="text-right">
-                            <div className="text-xs text-zinc-500">Timeframe</div>
-                            <div className="text-sm text-zinc-300">{tradingRecommendation.timeframe}</div>
-                        </div>
-                        <div className={`px-3 py-2 rounded-lg ${getRiskBg(tradingRecommendation.riskLevel)}`}>
-                            <div className="text-xs text-zinc-500">Risk</div>
-                            <div className={`text-sm font-medium ${getRiskColor(tradingRecommendation.riskLevel)}`}>
-                                {tradingRecommendation.riskLevel.toUpperCase()}
+                            <div>
+                                <span className={`text-2xl font-bold ${getBiasColor(tradingRecommendation.action === 'buy' ? 'bullish' : tradingRecommendation.action === 'sell' ? 'bearish' : 'neutral')}`}>
+                                    {tradingRecommendation.action.toUpperCase()}
+                                </span>
+                                <div className="flex items-center gap-4 mt-1 text-sm">
+                                    <span className="text-zinc-500">Confidence: <span className={getConfidenceColor(tradingRecommendation.confidence)}>{tradingRecommendation.confidence}</span></span>
+                                    <span className="text-zinc-500">Risk: <span className={getRiskColor(tradingRecommendation.riskLevel)}>{tradingRecommendation.riskLevel}</span></span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div className="text-right">
+                        <div className="text-xs text-zinc-500">Timeframe</div>
+                        <div className="text-lg font-medium text-zinc-300">{tradingRecommendation.timeframe}</div>
+                    </div>
                 </div>
-                <p className="text-sm text-zinc-400 mt-2">{tradingRecommendation.reasoning}</p>
+                <p className="text-sm text-zinc-400 mt-4 leading-relaxed">{tradingRecommendation.reasoning}</p>
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-800">
+            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-800/50">
                 {/* Technical Analysis */}
-                <div className="p-5">
-                    <h3 className="text-sm font-semibold text-zinc-50 mb-3 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                        Technical Analysis
-                    </h3>
-
-                    <div className="space-y-3 text-sm">
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-0.5">Trend</div>
-                            <p className="text-zinc-300">{technicalAnalysis.trend}</p>
+                <div className="p-6">
+                    <h3 className="section-title text-sm font-semibold text-white mb-4">Technical Analysis</h3>
+                    <div className="space-y-4">
+                        <div className="p-3 rounded-xl bg-zinc-800/30">
+                            <div className="text-xs text-zinc-500 mb-1">Trend</div>
+                            <p className="text-sm text-zinc-300">{technicalAnalysis.trend}</p>
                         </div>
-
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-0.5">Momentum</div>
-                            <p className="text-zinc-300">{technicalAnalysis.momentum}</p>
+                        <div className="p-3 rounded-xl bg-zinc-800/30">
+                            <div className="text-xs text-zinc-500 mb-1">Momentum</div>
+                            <p className="text-sm text-zinc-300">{technicalAnalysis.momentum}</p>
                         </div>
-
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-zinc-800/50 rounded-lg p-2">
+                            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                                 <div className="text-xs text-zinc-500">Support</div>
-                                <div className="text-emerald-400 text-sm font-medium">
-                                    {technicalAnalysis.keyLevels.support}
-                                </div>
+                                <div className="text-emerald-400 font-medium">{technicalAnalysis.keyLevels.support}</div>
                             </div>
-                            <div className="bg-zinc-800/50 rounded-lg p-2">
+                            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
                                 <div className="text-xs text-zinc-500">Resistance</div>
-                                <div className="text-red-400 text-sm font-medium">
-                                    {technicalAnalysis.keyLevels.resistance}
-                                </div>
+                                <div className="text-red-400 font-medium">{technicalAnalysis.keyLevels.resistance}</div>
                             </div>
                         </div>
-
                         <div>
-                            <div className="text-xs text-zinc-500 mb-1">Signals</div>
+                            <div className="text-xs text-zinc-500 mb-2">Signals</div>
                             <ul className="space-y-1">
                                 {technicalAnalysis.signals.map((signal, i) => (
-                                    <li key={i} className="text-zinc-300 flex items-start gap-2">
-                                        <span className="text-blue-400 mt-1">›</span>
+                                    <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
+                                        <span className="text-violet-400 mt-0.5">›</span>
                                         {signal}
                                     </li>
                                 ))}
@@ -315,34 +333,27 @@ export default function AISummaryCard() {
                 </div>
 
                 {/* Macro Analysis */}
-                <div className="p-5">
-                    <h3 className="text-sm font-semibold text-zinc-50 mb-3 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                        Macro Analysis
-                    </h3>
-
-                    <div className="space-y-3 text-sm">
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-0.5">Rate Differential</div>
-                            <p className="text-zinc-300">{macroAnalysis.interestRateDifferential}</p>
+                <div className="p-6">
+                    <h3 className="section-title text-sm font-semibold text-white mb-4">Macro Analysis</h3>
+                    <div className="space-y-4">
+                        <div className="p-3 rounded-xl bg-zinc-800/30">
+                            <div className="text-xs text-zinc-500 mb-1">Rate Differential</div>
+                            <p className="text-sm text-zinc-300">{macroAnalysis.interestRateDifferential}</p>
                         </div>
-
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-0.5">Inflation Outlook</div>
-                            <p className="text-zinc-300">{macroAnalysis.inflationOutlook}</p>
+                        <div className="p-3 rounded-xl bg-zinc-800/30">
+                            <div className="text-xs text-zinc-500 mb-1">Inflation Outlook</div>
+                            <p className="text-sm text-zinc-300">{macroAnalysis.inflationOutlook}</p>
                         </div>
-
-                        <div>
-                            <div className="text-xs text-zinc-500 mb-0.5">Central Bank Stance</div>
-                            <p className="text-zinc-300">{macroAnalysis.centralBankStance}</p>
+                        <div className="p-3 rounded-xl bg-zinc-800/30">
+                            <div className="text-xs text-zinc-500 mb-1">Central Bank Stance</div>
+                            <p className="text-sm text-zinc-300">{macroAnalysis.centralBankStance}</p>
                         </div>
-
                         <div>
-                            <div className="text-xs text-zinc-500 mb-1">Key Drivers</div>
+                            <div className="text-xs text-zinc-500 mb-2">Key Drivers</div>
                             <ul className="space-y-1">
                                 {macroAnalysis.keyDrivers.map((driver, i) => (
-                                    <li key={i} className="text-zinc-300 flex items-start gap-2">
-                                        <span className="text-purple-400 mt-1">›</span>
+                                    <li key={i} className="text-sm text-zinc-300 flex items-start gap-2">
+                                        <span className="text-purple-400 mt-0.5">›</span>
                                         {driver}
                                     </li>
                                 ))}
@@ -353,11 +364,8 @@ export default function AISummaryCard() {
             </div>
 
             {/* Risks Section */}
-            <div className="px-6 py-4 bg-zinc-800/30 border-t border-zinc-800">
-                <h3 className="text-sm font-semibold text-zinc-50 mb-2 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                    Key Risks
-                </h3>
+            <div className="p-6 bg-zinc-800/20 border-t border-zinc-800/50">
+                <h3 className="section-title text-sm font-semibold text-white mb-3">Key Risks</h3>
                 <div className="flex flex-wrap gap-2">
                     {risks.map((risk, i) => (
                         <span
@@ -372,7 +380,7 @@ export default function AISummaryCard() {
 
             {/* Warning Footer */}
             {summary.error && (
-                <div className="px-6 py-2 bg-amber-500/10 border-t border-amber-500/20">
+                <div className="px-6 py-3 bg-amber-500/10 border-t border-amber-500/20">
                     <p className="text-xs text-amber-400">⚠ {summary.error}</p>
                 </div>
             )}

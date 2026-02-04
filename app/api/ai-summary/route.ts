@@ -12,11 +12,8 @@ let summaryCache: SummaryCache | null = null;
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 export type AISummaryOutput = {
-    // Market Overview
     marketBias: 'bullish' | 'bearish' | 'neutral';
     biasStrength: 'strong' | 'moderate' | 'weak';
-
-    // Technical Analysis
     technicalAnalysis: {
         trend: string;
         momentum: string;
@@ -26,16 +23,12 @@ export type AISummaryOutput = {
         };
         signals: string[];
     };
-
-    // Macro Analysis
     macroAnalysis: {
         interestRateDifferential: string;
         inflationOutlook: string;
         centralBankStance: string;
         keyDrivers: string[];
     };
-
-    // Trading Recommendation
     tradingRecommendation: {
         action: 'buy' | 'sell' | 'hold' | 'wait';
         confidence: 'high' | 'medium' | 'low';
@@ -43,14 +36,8 @@ export type AISummaryOutput = {
         riskLevel: 'high' | 'medium' | 'low';
         timeframe: string;
     };
-
-    // Key Risks
     risks: string[];
-
-    // Summary
     executiveSummary: string;
-
-    // Meta
     generatedAt: string;
 };
 
@@ -68,6 +55,38 @@ type IndicatorsData = {
     ema20?: number;
     ema50?: number;
     trend?: string;
+    priceChange?: number;
+    priceChangePercent?: number;
+    dayHigh?: number;
+    dayLow?: number;
+};
+
+type PivotData = {
+    pivots?: {
+        pp: number;
+        r1: number;
+        r2: number;
+        r3: number;
+        s1: number;
+        s2: number;
+        s3: number;
+    };
+    atr?: {
+        value: number;
+        period: number;
+        volatility: string;
+    };
+    pricePosition?: {
+        zone: string;
+        nearestLevel: string;
+        nearestValue: number;
+        distance: number;
+    };
+    rangeAnalysis?: {
+        currentRange: number;
+        atrPercent: number;
+        rangeRemaining: number;
+    };
 };
 
 type MacroData = {
@@ -87,25 +106,91 @@ type CalendarEvent = {
 
 type Headline = {
     title: string;
+    description?: string;
     source: string;
+};
+
+type MTFData = {
+    timeframes?: Array<{
+        timeframe: string;
+        label: string;
+        bias: string;
+        ema20: number;
+        ema50: number;
+        rsi: number;
+        trend: string;
+    }>;
+    alignment?: {
+        direction: string;
+        percentage: number;
+    };
+};
+
+type KeyLevelsData = {
+    previousDay?: { high: number; low: number; close: number };
+    currentPrice?: number;
+    priceVsPDC?: { position: string; bias: string; distance: number };
+    activeSession?: string;
 };
 
 function buildDetailedPrompt(
     indicators: IndicatorsData,
+    pivots: PivotData,
     macro: MacroData,
     calendar: CalendarEvent[],
-    headlines: Headline[]
+    headlines: Headline[],
+    mtf: MTFData,
+    keyLevels: KeyLevelsData
 ): string {
-    // Technical data section
+    // Technical data
     const technicalStr = [
         indicators.price != null && `Current Price: ${indicators.price.toFixed(3)}`,
-        indicators.rsi != null && `RSI(14): ${indicators.rsi.toFixed(2)}`,
+        indicators.priceChange != null && `Price Change: ${indicators.priceChange >= 0 ? '+' : ''}${indicators.priceChange.toFixed(3)} (${indicators.priceChangePercent?.toFixed(2)}%)`,
+        indicators.dayHigh != null && indicators.dayLow != null && `Day Range: ${indicators.dayLow.toFixed(2)} - ${indicators.dayHigh.toFixed(2)}`,
+        indicators.rsi != null && `RSI(14): ${indicators.rsi.toFixed(2)}${indicators.rsi >= 70 ? ' (OVERBOUGHT)' : indicators.rsi <= 30 ? ' (OVERSOLD)' : ''}`,
         indicators.ema20 != null && `EMA 20: ${indicators.ema20.toFixed(3)}`,
         indicators.ema50 != null && `EMA 50: ${indicators.ema50.toFixed(3)}`,
-        indicators.trend && `Current Trend: ${indicators.trend}`,
+        indicators.ema20 != null && indicators.ema50 != null && `EMA Cross: ${indicators.ema20 > indicators.ema50 ? 'BULLISH (20>50)' : 'BEARISH (20<50)'}`,
+        indicators.trend && `Trend: ${indicators.trend.toUpperCase()}`,
     ].filter(Boolean).join('\n') || 'No technical data available';
 
-    // Macro data section
+    // MTF Analysis
+    const mtfStr = mtf.timeframes?.length ? [
+        `MTF Alignment: ${mtf.alignment?.direction?.toUpperCase() || 'MIXED'} (${mtf.alignment?.percentage || 0}% aligned)`,
+        ...mtf.timeframes.map(tf =>
+            `- ${tf.label}: ${tf.bias.toUpperCase()} | EMA20 ${tf.ema20.toFixed(2)} vs EMA50 ${tf.ema50.toFixed(2)} | RSI ${tf.rsi.toFixed(1)} | Trend: ${tf.trend}`
+        )
+    ].join('\n') : 'No MTF data available';
+
+    // Key Levels
+    const keyLevelsStr = keyLevels.previousDay ? [
+        `Previous Day High (PDH): ${keyLevels.previousDay.high.toFixed(3)}`,
+        `Previous Day Low (PDL): ${keyLevels.previousDay.low.toFixed(3)}`,
+        `Previous Day Close (PDC): ${keyLevels.previousDay.close.toFixed(3)}`,
+        keyLevels.priceVsPDC && `Price vs PDC: ${keyLevels.priceVsPDC.position.toUpperCase()} by ${keyLevels.priceVsPDC.distance.toFixed(3)} pips (${keyLevels.priceVsPDC.bias.toUpperCase()} bias)`,
+        keyLevels.activeSession && `Active Session: ${keyLevels.activeSession}`,
+    ].filter(Boolean).join('\n') : 'No key levels data';
+
+    // ATR & Volatility (dedicated section)
+    const atrStr = pivots.atr ? [
+        `ATR(14): ${pivots.atr.value.toFixed(3)} pips`,
+        `Volatility Level: ${pivots.atr.volatility.toUpperCase()}`,
+        pivots.rangeAnalysis && `Today's Range Used: ${pivots.rangeAnalysis.currentRange.toFixed(3)} pips (${pivots.rangeAnalysis.atrPercent.toFixed(0)}% of ATR)`,
+        pivots.rangeAnalysis && `Remaining Expected Range: ${pivots.rangeAnalysis.rangeRemaining.toFixed(3)} pips`,
+        `Stop Loss Suggestion: ${(pivots.atr.value * 1.5).toFixed(3)} pips (1.5x ATR)`,
+        `Take Profit Target: ${(pivots.atr.value * 2).toFixed(3)} pips (2x ATR)`,
+    ].filter(Boolean).join('\n') : 'No ATR data available';
+
+    // Pivot Points
+    const pivotStr = pivots.pivots ? [
+        `Pivot Point (PP): ${pivots.pivots.pp}`,
+        `Resistance: R1=${pivots.pivots.r1}, R2=${pivots.pivots.r2}, R3=${pivots.pivots.r3}`,
+        `Support: S1=${pivots.pivots.s1}, S2=${pivots.pivots.s2}, S3=${pivots.pivots.s3}`,
+        pivots.pricePosition && `Price Zone: ${pivots.pricePosition.zone.replace(/_/g, ' ').toUpperCase()}`,
+        pivots.pricePosition && `Nearest Level: ${pivots.pricePosition.nearestLevel} at ${pivots.pricePosition.nearestValue} (${pivots.pricePosition.distance.toFixed(2)} pips away)`,
+    ].filter(Boolean).join('\n') : 'No pivot data available';
+
+    // Macro data
     const macroStr = [
         macro.us10yYield != null && `US 10Y Treasury Yield: ${macro.us10yYield}%`,
         macro.usInflation != null && `US Inflation Rate: ${macro.usInflation}%`,
@@ -126,13 +211,27 @@ function buildDetailedPrompt(
 
     // News headlines
     const newsStr = headlines.length
-        ? headlines.slice(0, 5).map(h => `- ${h.title}`).join('\n')
+        ? headlines.slice(0, 8).map(h =>
+            `- [${h.source}] ${h.title}`
+        ).join('\n')
         : 'No recent headlines';
 
     return `You are an expert FX analyst providing a comprehensive trading analysis for USD/JPY. Analyze ALL the data provided below and generate a detailed, actionable trading summary.
 
-=== TECHNICAL DATA ===
+=== CURRENT PRICE & TECHNICALS ===
 ${technicalStr}
+
+=== MULTI-TIMEFRAME ANALYSIS ===
+${mtfStr}
+
+=== KEY LEVELS (PDH/PDL/PDC) ===
+${keyLevelsStr}
+
+=== ATR & VOLATILITY ===
+${atrStr}
+
+=== PIVOT POINTS ===
+${pivotStr}
 
 === MACRO DATA ===
 ${macroStr}
@@ -140,7 +239,7 @@ ${macroStr}
 === UPCOMING ECONOMIC EVENTS ===
 ${calendarStr}
 
-=== RECENT NEWS ===
+=== RECENT NEWS (Last 7 days) ===
 ${newsStr}
 
 === YOUR ANALYSIS REQUIREMENTS ===
@@ -150,36 +249,36 @@ Provide a comprehensive JSON response with the following structure. Be specific 
     "marketBias": "bullish" | "bearish" | "neutral",
     "biasStrength": "strong" | "moderate" | "weak",
     "technicalAnalysis": {
-        "trend": "Brief description of current trend state",
-        "momentum": "RSI interpretation and momentum assessment",
+        "trend": "Brief description of current trend state based on MTF alignment",
+        "momentum": "RSI interpretation across timeframes",
         "keyLevels": {
-            "support": "Key support level with reasoning",
-            "resistance": "Key resistance level with reasoning"
+            "support": "Key support level (use PDL, S1, or EMA levels)",
+            "resistance": "Key resistance level (use PDH, R1, or EMA levels)"
         },
-        "signals": ["signal1", "signal2", "signal3"] // 3 key technical signals
+        "signals": ["signal1", "signal2", "signal3"]
     },
     "macroAnalysis": {
         "interestRateDifferential": "Analysis of US-Japan rate differential impact",
         "inflationOutlook": "Inflation comparison and implications",
-        "centralBankStance": "Fed vs BOJ policy outlook",
-        "keyDrivers": ["driver1", "driver2"] // 2-3 key macro drivers
+        "centralBankStance": "Fed vs BOJ policy outlook based on news",
+        "keyDrivers": ["driver1", "driver2"]
     },
     "tradingRecommendation": {
         "action": "buy" | "sell" | "hold" | "wait",
         "confidence": "high" | "medium" | "low",
-        "reasoning": "One sentence explaining the recommendation",
+        "reasoning": "One sentence explaining the recommendation, reference MTF alignment and key levels",
         "riskLevel": "high" | "medium" | "low",
         "timeframe": "Recommended timeframe (e.g., 'Intraday', '1-2 days', 'Swing')"
     },
-    "risks": ["risk1", "risk2", "risk3"], // 3 key risks to watch
-    "executiveSummary": "2-3 sentence executive summary of the analysis and recommendation"
+    "risks": ["risk1", "risk2", "risk3"],
+    "executiveSummary": "2-3 sentence executive summary including MTF bias and news impact"
 }
 
 RULES:
 1. Base your analysis ONLY on the data provided above
-2. Be specific with price levels when discussing support/resistance
-3. Consider the upcoming events when assessing risk
-4. If data is missing, note it but still provide analysis based on available data
+2. Consider MTF alignment when determining bias strength (100% = strong)
+3. Factor in news sentiment when assessing market direction
+4. Use PDH/PDL/PDC and pivot levels for support/resistance
 5. Keep all text fields concise (under 50 words each)
 6. Return ONLY valid JSON, no markdown or code blocks`;
 }
@@ -212,7 +311,6 @@ function parseAISummary(text: string): AISummaryOutput | null {
     try {
         const parsed = JSON.parse(jsonStr);
 
-        // Validate and normalize the response
         const validBias = ['bullish', 'bearish', 'neutral'].includes(parsed.marketBias)
             ? parsed.marketBias
             : 'neutral';
@@ -273,13 +371,13 @@ export async function GET(request: NextRequest) {
     try {
         const now = Date.now();
 
-        // Check cache first - return cached data if still valid
+        // Check cache first
         if (summaryCache && (now - summaryCache.timestamp) < CACHE_DURATION) {
             return NextResponse.json({
                 ...summaryCache.data,
                 cached: true,
-                cacheAge: Math.round((now - summaryCache.timestamp) / 60000), // minutes
-                nextRefresh: Math.round((CACHE_DURATION - (now - summaryCache.timestamp)) / 60000), // minutes
+                cacheAge: Math.round((now - summaryCache.timestamp) / 60000),
+                nextRefresh: Math.round((CACHE_DURATION - (now - summaryCache.timestamp)) / 60000),
             });
         }
 
@@ -293,19 +391,25 @@ export async function GET(request: NextRequest) {
 
         const base = getBaseUrl(request);
 
-        // Fetch all data in parallel
-        const [indicatorsRes, macroRes, calendarRes, newsRes] = await Promise.all([
-            fetch(`${base}/api/indicators`),
+        // Fetch ALL data sources in parallel
+        const [indicatorsRes, pivotsRes, macroRes, calendarRes, newsRes, mtfRes, keyLevelsRes] = await Promise.all([
+            fetch(`${base}/api/indicators-free`),
+            fetch(`${base}/api/pivots`),
             fetch(`${base}/api/macro`),
             fetch(`${base}/api/calendar`),
             fetch(`${base}/api/news`),
+            fetch(`${base}/api/mtf`),
+            fetch(`${base}/api/key-levels`),
         ]);
 
-        const [indicatorsJson, macroJson, calendarJson, newsJson] = await Promise.all([
+        const [indicatorsJson, pivotsJson, macroJson, calendarJson, newsJson, mtfJson, keyLevelsJson] = await Promise.all([
             indicatorsRes.json().catch(() => ({})),
+            pivotsRes.json().catch(() => ({})),
             macroRes.json().catch(() => ({})),
             calendarRes.json().catch(() => ({ events: [] })),
-            newsRes.json().catch(() => ({ headlines: [] })),
+            newsRes.json().catch(() => ({ articles: [] })),
+            mtfRes.json().catch(() => ({})),
+            keyLevelsRes.json().catch(() => ({})),
         ]);
 
         const indicators: IndicatorsData = {
@@ -314,6 +418,17 @@ export async function GET(request: NextRequest) {
             ema20: indicatorsJson?.ema20,
             ema50: indicatorsJson?.ema50,
             trend: indicatorsJson?.trend,
+            priceChange: indicatorsJson?.priceChange,
+            priceChangePercent: indicatorsJson?.priceChangePercent,
+            dayHigh: indicatorsJson?.dayHigh,
+            dayLow: indicatorsJson?.dayLow,
+        };
+
+        const pivots: PivotData = {
+            pivots: pivotsJson?.pivots,
+            atr: pivotsJson?.atr,
+            pricePosition: pivotsJson?.pricePosition,
+            rangeAnalysis: pivotsJson?.rangeAnalysis,
         };
 
         const macro: MacroData = {
@@ -326,14 +441,28 @@ export async function GET(request: NextRequest) {
             ? calendarJson.events
             : [];
 
-        const headlines: Headline[] = Array.isArray(newsJson?.headlines)
-            ? newsJson.headlines.map((h: { title?: string; source?: string }) => ({
+        // Handle news - now a flat articles array
+        const headlines: Headline[] = Array.isArray(newsJson?.articles)
+            ? newsJson.articles.slice(0, 10).map((h: { title?: string; description?: string; source?: string }) => ({
                 title: h.title ?? '',
+                description: h.description ?? '',
                 source: h.source ?? '',
             }))
             : [];
 
-        const prompt = buildDetailedPrompt(indicators, macro, calendar, headlines);
+        const mtf: MTFData = {
+            timeframes: mtfJson?.timeframes,
+            alignment: mtfJson?.alignment,
+        };
+
+        const keyLevels: KeyLevelsData = {
+            previousDay: keyLevelsJson?.previousDay,
+            currentPrice: keyLevelsJson?.currentPrice,
+            priceVsPDC: keyLevelsJson?.priceVsPDC,
+            activeSession: keyLevelsJson?.activeSession,
+        };
+
+        const prompt = buildDetailedPrompt(indicators, pivots, macro, calendar, headlines, mtf, keyLevels);
         const model = process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
 
         const controller = new AbortController();
@@ -358,7 +487,6 @@ export async function GET(request: NextRequest) {
             const errBody = await openRouterRes.text();
             console.error('OpenRouter API error:', openRouterRes.status, errBody);
 
-            // Return cached data if available on error
             if (summaryCache) {
                 return NextResponse.json({
                     ...summaryCache.data,
@@ -440,7 +568,6 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('AI summary route error:', error);
 
-        // Return cached data if available
         if (summaryCache) {
             return NextResponse.json({
                 ...summaryCache.data,

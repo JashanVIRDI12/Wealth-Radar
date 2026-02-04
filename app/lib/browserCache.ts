@@ -13,11 +13,16 @@ type CacheEntry<T> = {
 
 // Cache durations in minutes (should match or be slightly less than server cache)
 export const CACHE_DURATIONS = {
-    indicators: 25,    // Server: 30 min
-    macro: 60 * 23,    // Server: 24h (cache for 23h on browser)
-    news: 12,          // Server: 15 min
-    calendar: 25,      // Server: 30 min
-    aiSummary: 55,     // Server: 1h
+    indicators: 25,        // Server: 30 min (Twelve Data)
+    indicatorsFree: 2,     // Server: 2 min (Yahoo Finance with fallback)
+    mtf: 2,                // Server: 2 min (Multi-timeframe alignment)
+    keyLevels: 5,          // Server: 5 min (PDH/PDL/PDC & Session levels - USDJPY)
+    keyLevelsNifty: 5,     // Server: 5 min (PDH/PDL/PDC & Session levels - NIFTY)
+    macro: 60 * 23,        // Server: 24h (cache for 23h on browser)
+    news: 12,              // Server: 15 min
+    calendar: 25,          // Server: 30 min
+    aiSummary: 55,         // Server: 1h
+    pivots: 55,            // Server: 1h (pivots change once per day)
 } as const;
 
 type CacheKey = keyof typeof CACHE_DURATIONS;
@@ -28,21 +33,21 @@ type CacheKey = keyof typeof CACHE_DURATIONS;
  */
 export function getCache<T>(key: CacheKey): T | null {
     if (typeof window === 'undefined') return null;
-    
+
     try {
         const raw = localStorage.getItem(`wealth-radar-cache-${key}`);
         if (!raw) return null;
-        
+
         const entry: CacheEntry<T> = JSON.parse(raw);
         const now = Date.now();
         const ageMinutes = (now - entry.timestamp) / (1000 * 60);
-        
+
         // Check if cache has expired
         if (ageMinutes > entry.ttl) {
             localStorage.removeItem(`wealth-radar-cache-${key}`);
             return null;
         }
-        
+
         return entry.data;
     } catch (e) {
         console.warn(`[Cache] Failed to read ${key}:`, e);
@@ -55,7 +60,7 @@ export function getCache<T>(key: CacheKey): T | null {
  */
 export function setCache<T>(key: CacheKey, data: T): void {
     if (typeof window === 'undefined') return;
-    
+
     try {
         const entry: CacheEntry<T> = {
             data,
@@ -81,7 +86,7 @@ export function clearCache(key: CacheKey): void {
  */
 export function clearAllCache(): void {
     if (typeof window === 'undefined') return;
-    
+
     Object.keys(CACHE_DURATIONS).forEach((key) => {
         localStorage.removeItem(`wealth-radar-cache-${key}`);
     });
@@ -92,11 +97,11 @@ export function clearAllCache(): void {
  */
 export function getCacheAge(key: CacheKey): number | null {
     if (typeof window === 'undefined') return null;
-    
+
     try {
         const raw = localStorage.getItem(`wealth-radar-cache-${key}`);
         if (!raw) return null;
-        
+
         const entry: CacheEntry<unknown> = JSON.parse(raw);
         return Math.round((Date.now() - entry.timestamp) / (1000 * 60));
     } catch {
@@ -118,15 +123,15 @@ export async function fetchWithCache<T>(
     if (cached) {
         return { data: cached, fromBrowserCache: true };
     }
-    
+
     // Fetch from API
     const response = await fetch(url, options);
     const data = await response.json();
-    
+
     // Cache the response (only if it's valid)
     if (response.ok) {
         setCache(key, data);
     }
-    
+
     return { data, fromBrowserCache: false };
 }
