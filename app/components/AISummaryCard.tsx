@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchWithCache, getCacheAge, clearCache } from '../lib/browserCache';
+import { fetchWithCache, getCacheAge, clearCache, type CacheKey } from '../lib/browserCache';
 
 type AISummary = {
     marketBias: 'bullish' | 'bearish' | 'neutral';
@@ -88,7 +88,15 @@ function formatTime(isoString: string): string {
     }
 }
 
-export default function AISummaryCard() {
+type AISummaryCardProps = {
+    apiUrl?: string;
+    cacheKey?: CacheKey;
+};
+
+export default function AISummaryCard({
+    apiUrl = '/api/ai-summary',
+    cacheKey = 'aiSummary',
+}: AISummaryCardProps) {
     const [summary, setSummary] = useState<AISummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -100,15 +108,15 @@ export default function AISummaryCard() {
         try {
             if (forceRefresh) {
                 setIsRegenerating(true);
-                clearCache('aiSummary');
+                clearCache(cacheKey);
             } else {
                 setLoading(true);
             }
             setError(null);
 
-            const { data, fromBrowserCache } = await fetchWithCache<AISummary>('aiSummary', '/api/ai-summary');
+            const { data, fromBrowserCache } = await fetchWithCache<AISummary>(cacheKey, apiUrl);
             setBrowserCached(fromBrowserCache);
-            setBrowserCacheAge(getCacheAge('aiSummary'));
+            setBrowserCacheAge(getCacheAge(cacheKey));
 
             if (data.error && !data.marketBias) {
                 setError(data.error || 'Failed to load summary');
@@ -133,7 +141,7 @@ export default function AISummaryCard() {
         fetchSummary();
         const interval = setInterval(() => fetchSummary(true), 60 * 60 * 1000); // 1 hour
         return () => clearInterval(interval);
-    }, []);
+    }, [apiUrl, cacheKey]);
 
     if (loading) {
         return (

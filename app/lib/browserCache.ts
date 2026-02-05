@@ -15,17 +15,22 @@ type CacheEntry<T> = {
 export const CACHE_DURATIONS = {
     indicators: 25,        // Server: 30 min (Twelve Data)
     indicatorsFree: 2,     // Server: 2 min (Yahoo Finance with fallback)
+    eurusdIndicatorsFree: 2,
     mtf: 2,                // Server: 2 min (Multi-timeframe alignment)
+    eurusdMtf: 2,
     keyLevels: 5,          // Server: 5 min (PDH/PDL/PDC & Session levels - USDJPY)
     keyLevelsNifty: 5,     // Server: 5 min (PDH/PDL/PDC & Session levels - NIFTY)
+    eurusdKeyLevels: 5,
     macro: 60 * 23,        // Server: 24h (cache for 23h on browser)
     news: 12,              // Server: 15 min
     calendar: 25,          // Server: 30 min
     aiSummary: 55,         // Server: 1h
+    eurusdAiSummary: 55,   // Server: 1h
     pivots: 55,            // Server: 1h (pivots change once per day)
+    eurusdPivots: 55,
 } as const;
 
-type CacheKey = keyof typeof CACHE_DURATIONS;
+export type CacheKey = keyof typeof CACHE_DURATIONS;
 
 /**
  * Get cached data from localStorage

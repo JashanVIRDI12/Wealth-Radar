@@ -1,5 +1,5 @@
-import Sidebar from '../components/Sidebar';
-import EconomicCalendar from '../components/EconomicCalendar';
+import Sidebar from '../../components/Sidebar';
+import EconomicCalendar from '../../components/EconomicCalendar';
 
 export default function CalendarPage() {
     return (

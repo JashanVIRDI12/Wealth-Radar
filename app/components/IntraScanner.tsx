@@ -57,10 +57,21 @@ type UnifiedSignal = {
     detailedReasons: DetailedReason[];
 };
 
+type IntraScannerProps = {
+    indicatorsUrl?: string;
+    mtfUrl?: string;
+    keyLevelsUrl?: string;
+    indicatorsCacheKey?: 'indicatorsFree' | 'eurusdIndicatorsFree';
+    mtfCacheKey?: 'mtf' | 'eurusdMtf';
+    keyLevelsCacheKey?: 'keyLevels' | 'eurusdKeyLevels';
+    pipScale?: number;
+};
+
 function calculateUnifiedSignal(
     indicators: IndicatorsData | null,
     mtf: MTFData | null,
-    keyLevels: KeyLevelsData | null
+    keyLevels: KeyLevelsData | null,
+    pipScale: number
 ): UnifiedSignal | null {
     if (!mtf || !mtf.timeframes) return null;
 
@@ -94,7 +105,7 @@ function calculateUnifiedSignal(
         score += pdcScore;
         detailedReasons.push({
             factor: 'Price vs PDC',
-            value: `${keyLevels.priceVsPDC.position.toUpperCase()} (${keyLevels.priceVsPDC.distance.toFixed(3)} pips)`,
+            value: `${keyLevels.priceVsPDC.position.toUpperCase()} (${(keyLevels.priceVsPDC.distance * pipScale).toFixed(3)} pips)`,
             score: pdcScore,
             explanation: `Price ${keyLevels.priceVsPDC.position} Previous Day Close indicates ${keyLevels.priceVsPDC.bias} bias`
         });
@@ -197,7 +208,15 @@ function calculateUnifiedSignal(
     };
 }
 
-export default function IntraScanner() {
+export default function IntraScanner({
+    indicatorsUrl = '/api/indicators-free',
+    mtfUrl = '/api/mtf',
+    keyLevelsUrl = '/api/key-levels',
+    indicatorsCacheKey = 'indicatorsFree',
+    mtfCacheKey = 'mtf',
+    keyLevelsCacheKey = 'keyLevels',
+    pipScale = 1,
+}: IntraScannerProps) {
     const [signal, setSignal] = useState<UnifiedSignal | null>(null);
     const [loading, setLoading] = useState(true);
     const [showDetails, setShowDetails] = useState(false);
@@ -205,21 +224,22 @@ export default function IntraScanner() {
     const fetchData = useCallback(async (forceRefresh = false) => {
         try {
             if (forceRefresh) {
-                clearCache('indicatorsFree');
-                clearCache('mtf');
-                clearCache('keyLevels');
+                clearCache(indicatorsCacheKey);
+                clearCache(mtfCacheKey);
+                clearCache(keyLevelsCacheKey);
             }
 
             const [indicatorsRes, mtfRes, keyLevelsRes] = await Promise.all([
-                fetchWithCache<IndicatorsData>('indicatorsFree', '/api/indicators-free'),
-                fetchWithCache<MTFData>('mtf', '/api/mtf'),
-                fetchWithCache<KeyLevelsData>('keyLevels', '/api/key-levels'),
+                fetchWithCache<IndicatorsData>(indicatorsCacheKey, indicatorsUrl),
+                fetchWithCache<MTFData>(mtfCacheKey, mtfUrl),
+                fetchWithCache<KeyLevelsData>(keyLevelsCacheKey, keyLevelsUrl),
             ]);
 
             const unified = calculateUnifiedSignal(
                 indicatorsRes.data,
                 mtfRes.data,
-                keyLevelsRes.data
+                keyLevelsRes.data,
+                pipScale
             );
 
             if (unified) {
@@ -230,7 +250,7 @@ export default function IntraScanner() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [indicatorsCacheKey, indicatorsUrl, keyLevelsCacheKey, keyLevelsUrl, mtfCacheKey, mtfUrl, pipScale]);
 
     useEffect(() => {
         fetchData();

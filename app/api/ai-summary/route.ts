@@ -8,7 +8,10 @@ type SummaryCache = {
     data: AISummaryOutput;
     timestamp: number;
 };
-let summaryCache: SummaryCache | null = null;
+let summaryCache: Record<string, SummaryCache | null> = {
+    USDJPY: null,
+    EURUSD: null,
+};
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 export type AISummaryOutput = {
@@ -140,7 +143,8 @@ function buildDetailedPrompt(
     calendar: CalendarEvent[],
     headlines: Headline[],
     mtf: MTFData,
-    keyLevels: KeyLevelsData
+    keyLevels: KeyLevelsData,
+    pairLabel: string
 ): string {
     // Technical data
     const technicalStr = [
@@ -216,7 +220,7 @@ function buildDetailedPrompt(
         ).join('\n')
         : 'No recent headlines';
 
-    return `You are an expert FX analyst providing a comprehensive trading analysis for USD/JPY. Analyze ALL the data provided below and generate a detailed, actionable trading summary.
+    return `You are an expert FX analyst providing a comprehensive trading analysis for ${pairLabel}. Analyze ALL the data provided below and generate a detailed, actionable trading summary.
 
 === CURRENT PRICE & TECHNICALS ===
 ${technicalStr}
@@ -371,13 +375,20 @@ export async function GET(request: NextRequest) {
     try {
         const now = Date.now();
 
+        const url = new URL(request.url);
+        const symbolParam = (url.searchParams.get('symbol') || 'USDJPY').toUpperCase().trim();
+        const symbol = symbolParam === 'EURUSD' ? 'EURUSD' : 'USDJPY';
+        const pairLabel = symbol === 'EURUSD' ? 'EUR/USD' : 'USD/JPY';
+
+        const cachedEntry = summaryCache[symbol];
+
         // Check cache first
-        if (summaryCache && (now - summaryCache.timestamp) < CACHE_DURATION) {
+        if (cachedEntry && (now - cachedEntry.timestamp) < CACHE_DURATION) {
             return NextResponse.json({
-                ...summaryCache.data,
+                ...cachedEntry.data,
                 cached: true,
-                cacheAge: Math.round((now - summaryCache.timestamp) / 60000),
-                nextRefresh: Math.round((CACHE_DURATION - (now - summaryCache.timestamp)) / 60000),
+                cacheAge: Math.round((now - cachedEntry.timestamp) / 60000),
+                nextRefresh: Math.round((CACHE_DURATION - (now - cachedEntry.timestamp)) / 60000),
             });
         }
 
@@ -391,15 +402,29 @@ export async function GET(request: NextRequest) {
 
         const base = getBaseUrl(request);
 
+        const endpoints = symbol === 'EURUSD'
+            ? {
+                indicators: '/api/eurusd-indicators',
+                pivots: '/api/eurusd-pivots',
+                mtf: '/api/eurusd-mtf',
+                keyLevels: '/api/eurusd-key-levels',
+            }
+            : {
+                indicators: '/api/indicators-free',
+                pivots: '/api/pivots',
+                mtf: '/api/mtf',
+                keyLevels: '/api/key-levels',
+            };
+
         // Fetch ALL data sources in parallel
         const [indicatorsRes, pivotsRes, macroRes, calendarRes, newsRes, mtfRes, keyLevelsRes] = await Promise.all([
-            fetch(`${base}/api/indicators-free`),
-            fetch(`${base}/api/pivots`),
+            fetch(`${base}${endpoints.indicators}`),
+            fetch(`${base}${endpoints.pivots}`),
             fetch(`${base}/api/macro`),
             fetch(`${base}/api/calendar`),
             fetch(`${base}/api/news`),
-            fetch(`${base}/api/mtf`),
-            fetch(`${base}/api/key-levels`),
+            fetch(`${base}${endpoints.mtf}`),
+            fetch(`${base}${endpoints.keyLevels}`),
         ]);
 
         const [indicatorsJson, pivotsJson, macroJson, calendarJson, newsJson, mtfJson, keyLevelsJson] = await Promise.all([
@@ -462,7 +487,7 @@ export async function GET(request: NextRequest) {
             activeSession: keyLevelsJson?.activeSession,
         };
 
-        const prompt = buildDetailedPrompt(indicators, pivots, macro, calendar, headlines, mtf, keyLevels);
+        const prompt = buildDetailedPrompt(indicators, pivots, macro, calendar, headlines, mtf, keyLevels, pairLabel);
         const model = process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
 
         const controller = new AbortController();
@@ -487,9 +512,9 @@ export async function GET(request: NextRequest) {
             const errBody = await openRouterRes.text();
             console.error('OpenRouter API error:', openRouterRes.status, errBody);
 
-            if (summaryCache) {
+            if (cachedEntry) {
                 return NextResponse.json({
-                    ...summaryCache.data,
+                    ...cachedEntry.data,
                     cached: true,
                     stale: true,
                     error: 'Using cached data due to API error',
@@ -508,9 +533,10 @@ export async function GET(request: NextRequest) {
         };
 
         if (openRouterJson?.error?.message) {
-            if (summaryCache) {
+            const cachedEntry = summaryCache[symbol];
+            if (cachedEntry) {
                 return NextResponse.json({
-                    ...summaryCache.data,
+                    ...cachedEntry.data,
                     cached: true,
                     stale: true,
                     error: 'Using cached data due to API error',
@@ -524,9 +550,9 @@ export async function GET(request: NextRequest) {
 
         const text = openRouterJson?.choices?.[0]?.message?.content?.trim() ?? '';
         if (!text) {
-            if (summaryCache) {
+            if (cachedEntry) {
                 return NextResponse.json({
-                    ...summaryCache.data,
+                    ...cachedEntry.data,
                     cached: true,
                     stale: true,
                     error: 'Using cached data - AI returned empty response',
@@ -540,9 +566,9 @@ export async function GET(request: NextRequest) {
 
         const output = parseAISummary(text);
         if (!output) {
-            if (summaryCache) {
+            if (cachedEntry) {
                 return NextResponse.json({
-                    ...summaryCache.data,
+                    ...cachedEntry.data,
                     cached: true,
                     stale: true,
                     error: 'Using cached data - could not parse AI response',
@@ -555,7 +581,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Update cache
-        summaryCache = {
+        summaryCache[symbol] = {
             data: output,
             timestamp: now,
         };
@@ -568,9 +594,14 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('AI summary route error:', error);
 
-        if (summaryCache) {
+        const url = new URL(request.url);
+        const symbolParam = (url.searchParams.get('symbol') || 'USDJPY').toUpperCase().trim();
+        const symbol = symbolParam === 'EURUSD' ? 'EURUSD' : 'USDJPY';
+        const cachedEntry = summaryCache[symbol];
+
+        if (cachedEntry) {
             return NextResponse.json({
-                ...summaryCache.data,
+                ...cachedEntry.data,
                 cached: true,
                 stale: true,
                 error: error instanceof Error ? error.message : 'Request failed',

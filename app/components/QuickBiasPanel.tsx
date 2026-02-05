@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { fetchWithCache, clearCache } from '../lib/browserCache';
+import { fetchWithCache, clearCache, type CacheKey } from '../lib/browserCache';
 
 type IndicatorsResponse = {
     price: number;
@@ -78,7 +78,17 @@ function calculateQuickStats(data: IndicatorsResponse): QuickStats {
     };
 }
 
-export default function QuickBiasPanel() {
+type QuickBiasPanelProps = {
+    apiUrl?: string;
+    cacheKey?: CacheKey;
+    decimalPlaces?: number;
+};
+
+export default function QuickBiasPanel({
+    apiUrl = '/api/indicators-free',
+    cacheKey = 'indicatorsFree',
+    decimalPlaces = 2,
+}: QuickBiasPanelProps) {
     const [stats, setStats] = useState<QuickStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [countdown, setCountdown] = useState(120);
@@ -86,10 +96,10 @@ export default function QuickBiasPanel() {
     const fetchData = useCallback(async (forceRefresh = false) => {
         try {
             if (forceRefresh) {
-                clearCache('indicatorsFree');
+                clearCache(cacheKey);
             }
 
-            const { data } = await fetchWithCache<IndicatorsResponse>('indicatorsFree', '/api/indicators-free');
+            const { data } = await fetchWithCache<IndicatorsResponse>(cacheKey, apiUrl);
 
             if (data.price) {
                 setStats(calculateQuickStats(data));
@@ -100,7 +110,7 @@ export default function QuickBiasPanel() {
             setLoading(false);
             setCountdown(60);
         }
-    }, []);
+    }, [apiUrl, cacheKey]);
 
     // Initial fetch
     useEffect(() => {
@@ -209,10 +219,10 @@ export default function QuickBiasPanel() {
                 {/* High/Low */}
                 <div className="px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/30">
                     <span className="text-xs text-zinc-500">H </span>
-                    <span className="text-sm font-medium text-emerald-400">{stats.dayHigh.toFixed(2)}</span>
+                    <span className="text-sm font-medium text-emerald-400">{stats.dayHigh.toFixed(decimalPlaces)}</span>
                     <span className="text-xs text-zinc-600 mx-1">/</span>
                     <span className="text-xs text-zinc-500">L </span>
-                    <span className="text-sm font-medium text-red-400">{stats.dayLow.toFixed(2)}</span>
+                    <span className="text-sm font-medium text-red-400">{stats.dayLow.toFixed(decimalPlaces)}</span>
                 </div>
             </div>
         </div>

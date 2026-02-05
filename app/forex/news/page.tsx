@@ -1,5 +1,5 @@
-import Sidebar from '../components/Sidebar';
-import NewsHeadlines from '../components/NewsHeadlines';
+import Sidebar from '../../components/Sidebar';
+import NewsHeadlines from '../../components/NewsHeadlines';
 
 export default function NewsPage() {
     return (

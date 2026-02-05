@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchWithCache } from '../lib/browserCache';
+import { fetchWithCache, type CacheKey } from '../lib/browserCache';
 
 type PivotData = {
     dailyOHLC: {
@@ -45,14 +45,26 @@ type PivotData = {
     error?: string;
 };
 
-export default function PivotATRCard() {
+type PivotATRCardProps = {
+    apiUrl?: string;
+    cacheKey?: CacheKey;
+    decimalPlaces?: number;
+    pipScale?: number;
+};
+
+export default function PivotATRCard({
+    apiUrl = '/api/pivots',
+    cacheKey = 'pivots',
+    decimalPlaces = 3,
+    pipScale = 1,
+}: PivotATRCardProps) {
     const [data, setData] = useState<PivotData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [browserCached, setBrowserCached] = useState(false);
 
     useEffect(() => {
-        fetchWithCache<PivotData>('pivots', '/api/pivots')
+        fetchWithCache<PivotData>(cacheKey, apiUrl)
             .then(({ data: json, fromBrowserCache }) => {
                 setBrowserCached(fromBrowserCache);
                 if (json.error) {
@@ -63,7 +75,7 @@ export default function PivotATRCard() {
             })
             .catch(() => setError('Failed to load pivot data'))
             .finally(() => setLoading(false));
-    }, []);
+    }, [apiUrl, cacheKey]);
 
     if (loading) {
         return (
@@ -118,6 +130,9 @@ export default function PivotATRCard() {
     // Calculate range used percentage bar
     const rangeUsedPercent = Math.min(100, data.rangeAnalysis.atrPercent);
 
+    const atrPips = data.atr.value * pipScale;
+    const nearestDistancePips = data.pricePosition.distance * pipScale;
+
     return (
         <div className="space-y-4">
             {/* ATR & Volatility Header */}
@@ -128,7 +143,7 @@ export default function PivotATRCard() {
                         <div className="text-xl font-bold text-white">{getVolatilityLabel()}</div>
                     </div>
                     <div className="text-right">
-                        <div className="text-3xl font-bold text-white">{data.atr.value.toFixed(2)}</div>
+                        <div className="text-3xl font-bold text-white">{atrPips.toFixed(2)}</div>
                         <div className="text-xs text-white/70">pips expected range</div>
                     </div>
                 </div>
@@ -144,7 +159,7 @@ export default function PivotATRCard() {
                     <div className="text-right">
                         <div className="text-xs text-zinc-500">Nearest: {data.pricePosition.nearestLevel}</div>
                         <div className="text-sm font-medium text-violet-400">
-                            {data.pricePosition.nearestValue} ({data.pricePosition.distance.toFixed(2)} pips)
+                            {data.pricePosition.nearestValue.toFixed(decimalPlaces)} ({nearestDistancePips.toFixed(2)} pips)
                         </div>
                     </div>
                 </div>
@@ -158,15 +173,15 @@ export default function PivotATRCard() {
                     <div className="space-y-1">
                         <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                             <span className="text-xs text-emerald-400 font-medium">R3</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.r3.toFixed(3)}</span>
+                            <span className="text-sm font-bold text-white">{data.pivots.r3.toFixed(decimalPlaces)}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                             <span className="text-xs text-emerald-400 font-medium">R2</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.r2.toFixed(3)}</span>
+                            <span className="text-sm font-bold text-white">{data.pivots.r2.toFixed(decimalPlaces)}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                             <span className="text-xs text-emerald-400 font-medium">R1</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.r1.toFixed(3)}</span>
+                            <span className="text-sm font-bold text-white">{data.pivots.r1.toFixed(decimalPlaces)}</span>
                         </div>
                     </div>
 
@@ -174,15 +189,15 @@ export default function PivotATRCard() {
                     <div className="space-y-1">
                         <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
                             <span className="text-xs text-red-400 font-medium">S1</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.s1.toFixed(3)}</span>
+                            <span className="text-sm font-bold text-white">{data.pivots.s1.toFixed(decimalPlaces)}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
                             <span className="text-xs text-red-400 font-medium">S2</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.s2.toFixed(3)}</span>
+                            <span className="text-sm font-bold text-white">{data.pivots.s2.toFixed(decimalPlaces)}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
                             <span className="text-xs text-red-400 font-medium">S3</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.s3.toFixed(3)}</span>
+                            <span className="text-sm font-bold text-white">{data.pivots.s3.toFixed(decimalPlaces)}</span>
                         </div>
                     </div>
                 </div>
@@ -190,7 +205,7 @@ export default function PivotATRCard() {
                 {/* Pivot Point */}
                 <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
                     <span className="text-sm text-amber-400 font-medium">Pivot Point (PP)</span>
-                    <span className="text-lg font-bold text-white">{data.pivots.pp.toFixed(3)}</span>
+                    <span className="text-lg font-bold text-white">{data.pivots.pp.toFixed(decimalPlaces)}</span>
                 </div>
             </div>
 

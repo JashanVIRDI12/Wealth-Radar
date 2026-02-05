@@ -11,12 +11,17 @@ type NavItem = {
 };
 
 type SidebarProps = {
-    market?: 'forex' | 'nifty';
+    market?: 'forex' | 'eurusd' | 'nifty';
+    pairName?: string;
+    pairEmoji?: string;
 };
 
-export default function Sidebar({ market = 'forex' }: SidebarProps) {
+export default function Sidebar({ market = 'forex', pairName, pairEmoji }: SidebarProps) {
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
+
+    const calendarHref = market === 'eurusd' ? '/calendar' : `/${market}/calendar`;
+    const newsHref = market === 'eurusd' ? '/news' : `/${market}/news`;
 
     // Market-specific navigation
     const navItems: NavItem[] = [
@@ -29,9 +34,9 @@ export default function Sidebar({ market = 'forex' }: SidebarProps) {
                 </svg>
             ),
         },
-        ...(market === 'forex' ? [{
+        ...((market === 'forex' || market === 'eurusd') ? [{
             name: 'Calendar',
-            href: `/${market}/calendar`,
+            href: calendarHref,
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -40,7 +45,7 @@ export default function Sidebar({ market = 'forex' }: SidebarProps) {
         }] : []),
         {
             name: 'News',
-            href: `/${market}/news`,
+            href: newsHref,
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -77,9 +82,20 @@ export default function Sidebar({ market = 'forex' }: SidebarProps) {
             colorBorder: 'border-cyan-500/30',
             colorText: 'text-cyan-400',
         },
+        eurusd: {
+            emoji: '💱',
+            name: 'EUR/USD',
+            label: 'Forex Pair',
+            color: 'from-violet-500 to-purple-600',
+            colorLight: 'from-violet-500/20 to-purple-500/10',
+            colorBorder: 'border-violet-500/30',
+            colorText: 'text-violet-400',
+        },
     };
 
     const config = marketConfig[market];
+    const resolvedName = pairName ?? config.name;
+    const resolvedEmoji = pairEmoji ?? config.emoji;
 
     return (
         <aside className={`fixed left-0 top-0 h-screen bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800/50 transition-all duration-300 z-50 ${collapsed ? 'w-20' : 'w-64'}`}>
@@ -150,9 +166,9 @@ export default function Sidebar({ market = 'forex' }: SidebarProps) {
                 <div className="absolute bottom-20 left-4 right-4">
                     <div className={`p-3 rounded-xl bg-gradient-to-r ${config.colorLight} border ${config.colorBorder}`}>
                         <div className="flex items-center gap-2">
-                            <span className="text-lg">{config.emoji}</span>
+                            <span className="text-lg">{resolvedEmoji}</span>
                             <div>
-                                <div className="text-sm font-medium text-white">{config.name}</div>
+                                <div className="text-sm font-medium text-white">{resolvedName}</div>
                                 <div className="text-xs text-zinc-500">{config.label}</div>
                             </div>
                         </div>

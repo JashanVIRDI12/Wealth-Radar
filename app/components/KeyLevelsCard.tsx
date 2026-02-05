@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { fetchWithCache, clearCache } from '../lib/browserCache';
+import { fetchWithCache, clearCache, type CacheKey } from '../lib/browserCache';
 
 type SessionData = {
     name: string;
@@ -39,26 +39,36 @@ type KeyLevelsData = {
 
 type KeyLevelsCardProps = {
     symbol?: string; // Optional: '^NSEI' for NIFTY, defaults to USDJPY
+    apiUrl?: string;
+    cacheKey?: CacheKey;
+    decimalPlaces?: number;
+    pipScale?: number;
 };
 
-export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
+export default function KeyLevelsCard({
+    symbol,
+    apiUrl,
+    cacheKey,
+    decimalPlaces,
+    pipScale = 1,
+}: KeyLevelsCardProps = {}) {
     const [data, setData] = useState<KeyLevelsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Determine API endpoint and formatting based on symbol
     const isNifty = symbol === '^NSEI';
-    const apiEndpoint = isNifty ? `/api/key-levels?symbol=${symbol}` : '/api/key-levels';
-    const decimalPlaces = isNifty ? 2 : 3; // NIFTY uses 2 decimals, USDJPY uses 3
-    const cacheKey = isNifty ? 'keyLevelsNifty' : 'keyLevels';
+    const apiEndpoint = apiUrl ?? (isNifty ? `/api/key-levels?symbol=${symbol}` : '/api/key-levels');
+    const displayDecimals = decimalPlaces ?? (isNifty ? 2 : 3); // NIFTY uses 2 decimals, USDJPY uses 3
+    const resolvedCacheKey: CacheKey = cacheKey ?? (isNifty ? 'keyLevelsNifty' : 'keyLevels');
 
     const fetchData = useCallback(async (forceRefresh = false) => {
         try {
             if (forceRefresh) {
-                clearCache(cacheKey);
+                clearCache(resolvedCacheKey);
             }
 
-            const { data: json } = await fetchWithCache<KeyLevelsData>(cacheKey, apiEndpoint);
+            const { data: json } = await fetchWithCache<KeyLevelsData>(resolvedCacheKey, apiEndpoint);
 
             if (json.previousDay) {
                 setData(json);
@@ -72,7 +82,7 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
         } finally {
             setLoading(false);
         }
-    }, [apiEndpoint, cacheKey]);
+    }, [apiEndpoint, resolvedCacheKey]);
 
     useEffect(() => {
         fetchData();
@@ -137,7 +147,7 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
                     <div className="text-right">
                         <div className="text-2xl font-bold text-white">
                             {data.priceVsPDC.position === 'above' ? '+' : '-'}
-                            {data.priceVsPDC.distance.toFixed(2)}
+                            {(data.priceVsPDC.distance * pipScale).toFixed(2)}
                         </div>
                         <div className="text-xs text-white/70">
                             {data.priceVsPDC.distancePercent.toFixed(3)}% {data.priceVsPDC.position}
@@ -159,7 +169,7 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
                             <span className="text-xs font-medium text-emerald-400">PDH</span>
                             <span className="text-xs text-zinc-500">Resistance</span>
                         </div>
-                        <span className="text-sm font-bold text-white">{data.previousDay.high.toFixed(decimalPlaces)}</span>
+                        <span className="text-sm font-bold text-white">{data.previousDay.high.toFixed(displayDecimals)}</span>
                     </div>
 
                     {/* PDC */}
@@ -168,7 +178,7 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
                             <span className="text-xs font-medium text-amber-400">PDC</span>
                             <span className="text-xs text-zinc-500">Pivot</span>
                         </div>
-                        <span className="text-sm font-bold text-white">{data.previousDay.close.toFixed(decimalPlaces)}</span>
+                        <span className="text-sm font-bold text-white">{data.previousDay.close.toFixed(displayDecimals)}</span>
                     </div>
 
                     {/* PDL */}
@@ -177,7 +187,7 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
                             <span className="text-xs font-medium text-red-400">PDL</span>
                             <span className="text-xs text-zinc-500">Support</span>
                         </div>
-                        <span className="text-sm font-bold text-white">{data.previousDay.low.toFixed(decimalPlaces)}</span>
+                        <span className="text-sm font-bold text-white">{data.previousDay.low.toFixed(displayDecimals)}</span>
                     </div>
                 </div>
 
@@ -229,17 +239,17 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
                                     )}
                                 </div>
                                 <div className="text-xs text-zinc-500">
-                                    Range: {session.range.toFixed(2)} pips
+                                    Range: {(session.range * pipScale).toFixed(2)} pips
                                 </div>
                             </div>
                             <div className="flex items-center justify-between mt-2 text-sm">
                                 <div>
                                     <span className="text-zinc-500">H </span>
-                                    <span className="text-emerald-400 font-medium">{session.high.toFixed(decimalPlaces)}</span>
+                                    <span className="text-emerald-400 font-medium">{session.high.toFixed(displayDecimals)}</span>
                                 </div>
                                 <div>
                                     <span className="text-zinc-500">L </span>
-                                    <span className="text-red-400 font-medium">{session.low.toFixed(decimalPlaces)}</span>
+                                    <span className="text-red-400 font-medium">{session.low.toFixed(displayDecimals)}</span>
                                 </div>
                             </div>
                         </div>
@@ -254,7 +264,7 @@ export default function KeyLevelsCard({ symbol }: KeyLevelsCardProps = {}) {
                     <div className="absolute inset-0 h-2 w-2 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
                 </div>
                 <span className="text-sm text-zinc-400">Current:</span>
-                <span className="text-lg font-bold text-white">{data.currentPrice.toFixed(decimalPlaces)}</span>
+                <span className="text-lg font-bold text-white">{data.currentPrice.toFixed(displayDecimals)}</span>
             </div>
         </div>
     );

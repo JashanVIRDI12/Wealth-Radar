@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 type MarketData = {
   price: number;
+  pdc: number;
   change: number;
   changePercent: number;
   bias: 'bullish' | 'bearish' | 'neutral';
@@ -13,10 +14,10 @@ type MarketData = {
 
 export default function HomePage() {
   const [usdjpyData, setUsdjpyData] = useState<MarketData>({
-    price: 0, change: 0, changePercent: 0, bias: 'neutral', loading: true
+    price: 0, pdc: 0, change: 0, changePercent: 0, bias: 'neutral', loading: true
   });
-  const [niftyData, setNiftyData] = useState<MarketData>({
-    price: 0, change: 0, changePercent: 0, bias: 'neutral', loading: true
+  const [eurusdData, setEurusdData] = useState<MarketData>({
+    price: 0, pdc: 0, change: 0, changePercent: 0, bias: 'neutral', loading: true
   });
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -37,6 +38,7 @@ export default function HomePage() {
 
           setUsdjpyData({
             price: data.price,
+            pdc: data.previousClose || 0,
             change: data.priceChange || 0,
             changePercent: data.priceChangePercent || 0,
             bias,
@@ -46,21 +48,27 @@ export default function HomePage() {
       })
       .catch(() => setUsdjpyData(prev => ({ ...prev, loading: false })));
 
-    fetch('/api/nifty-quote')
+    // Fetch EURUSD data from indicators API (includes live price + trend)
+    fetch('/api/eurusd-indicators')
       .then(res => res.json())
       .then(data => {
         if (data.price) {
-          const changePercent = data.changePercent || 0;
-          setNiftyData({
+          // Convert trend to bias: uptrend = bullish, downtrend = bearish, sideways = neutral
+          let bias: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+          if (data.trend === 'uptrend') bias = 'bullish';
+          else if (data.trend === 'downtrend') bias = 'bearish';
+
+          setEurusdData({
             price: data.price,
-            change: data.change || 0,
-            changePercent,
-            bias: changePercent > 0.3 ? 'bullish' : changePercent < -0.3 ? 'bearish' : 'neutral',
+            pdc: data.previousClose || 0,
+            change: data.priceChange || 0,
+            changePercent: data.priceChangePercent || 0,
+            bias,
             loading: false
           });
         }
       })
-      .catch(() => setNiftyData(prev => ({ ...prev, loading: false })));
+      .catch(() => setEurusdData(prev => ({ ...prev, loading: false })));
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -179,7 +187,7 @@ export default function HomePage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                         </svg>
                       )}
-                      <span>{usdjpyData.change >= 0 ? '+' : ''}{usdjpyData.change.toFixed(3)} ({usdjpyData.changePercent >= 0 ? '+' : ''}{usdjpyData.changePercent.toFixed(2)}%)</span>
+                      <span>{usdjpyData.changePercent >= 0 ? '+' : ''}{usdjpyData.changePercent.toFixed(2)}% from PDC</span>
                     </div>
                   </>
                 )}
@@ -259,42 +267,75 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* NIFTY Card - Coming Soon */}
-          <div className="group block">
-            <div className="bg-zinc-900/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-5 sm:p-8 h-full border border-zinc-800/50 relative overflow-hidden opacity-80">
+          {/* EUR/USD Card */}
+          <Link href="/eurusd" className="group block">
+            <div className="bg-zinc-900/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-5 sm:p-8 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-500/20 cursor-pointer h-full border border-zinc-800/50 hover:border-cyan-500/40 relative overflow-hidden">
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
               <div className="flex items-start justify-between mb-5 sm:mb-8 relative">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                     </svg>
-                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Stock Index</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Forex Trading</span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white">NIFTY 50</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white">EUR/USD</h2>
                 </div>
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
                   <svg className="w-5 h-5 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                   </svg>
                 </div>
               </div>
 
-              {/* Coming Soon */}
-              <div className="mb-8">
-                <div className="text-4xl font-bold text-white mb-3">Coming Soon</div>
-                <p className="text-zinc-500 text-sm">
-                  NIFTY 50 dashboard is under development. Stay tuned for real-time Indian market insights.
-                </p>
+              <div className="mb-4 sm:mb-6">
+                {eurusdData.loading ? (
+                  <div className="h-10 sm:h-14 w-36 sm:w-48 bg-zinc-800/50 rounded-xl animate-pulse"></div>
+                ) : (
+                  <>
+                    <div className="text-3xl sm:text-5xl font-bold text-white mb-2 tracking-tight">
+                      {eurusdData.price.toFixed(5)}
+                    </div>
+                    <div className={`flex items-center gap-2 text-sm sm:text-base font-medium ${eurusdData.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {eurusdData.change >= 0 ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                      )}
+                      <span>{eurusdData.changePercent >= 0 ? '+' : ''}{eurusdData.changePercent.toFixed(2)}% from PDC</span>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 mb-8">
-                <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-bold text-cyan-400">IN DEVELOPMENT</span>
-              </div>
+              {!eurusdData.loading && (
+                <div className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl ${getBiasStyles(eurusdData.bias).bg} ${getBiasStyles(eurusdData.bias).border} border mb-5 sm:mb-8`}>
+                  {eurusdData.bias === 'bullish' && (
+                    <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  )}
+                  {eurusdData.bias === 'bearish' && (
+                    <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                    </svg>
+                  )}
+                  {eurusdData.bias === 'neutral' && (
+                    <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                  )}
+                  <span className={`text-sm font-bold ${getBiasStyles(eurusdData.bias).text}`}>
+                    {getBiasStyles(eurusdData.bias).label}
+                  </span>
+                  <span className="text-xs text-zinc-500">Technical Bias</span>
+                </div>
+              )}
 
               <div className="rounded-2xl bg-zinc-950/60 border border-zinc-800/50 p-4 mb-6 overflow-hidden">
                 <div className="flex items-center gap-2 mb-4">
@@ -313,18 +354,18 @@ export default function HomePage() {
                         <stop offset="100%" stopColor="rgb(6, 182, 212)" stopOpacity="0" />
                       </linearGradient>
                     </defs>
-                    <path d="M0,30 Q30,40 50,32 T100,36 T140,20 T180,28 T200,22" fill="none" stroke="rgb(6, 182, 212)" strokeWidth="2.5" />
-                    <path d="M0,30 Q30,40 50,32 T100,36 T140,20 T180,28 T200,22 L200,50 L0,50 Z" fill="url(#cyanGrad)" />
+                    <path d="M0,25 Q20,35 40,28 T80,30 T120,22 T160,32 T200,18" fill="none" stroke="rgb(6, 182, 212)" strokeWidth="2.5" />
+                    <path d="M0,25 Q20,35 40,28 T80,30 T120,22 T160,32 T200,18 L200,50 L0,50 Z" fill="url(#cyanGrad)" />
                   </svg>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-6">
                 {[
-                  { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Charts' },
-                  { icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', label: 'Movers' },
-                  { icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z', label: 'Sectors' },
-                  { icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z', label: 'News' },
+                  { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Indicators' },
+                  { icon: 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z', label: 'Pivots' },
+                  { icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', label: 'AI' },
+                  { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Sessions' },
                 ].map((item) => (
                   <span key={item.label} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-zinc-800/60 text-zinc-400 border border-zinc-700/30">
                     <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,16 +377,17 @@ export default function HomePage() {
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
-                <div className="flex items-center text-zinc-500 text-sm font-semibold">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                  <span>Locked</span>
+                  <span className="text-xs text-zinc-600">24/7 Markets</span>
                 </div>
-                <span className="text-xs text-zinc-600">NSE India</span>
+                <span className="text-xs text-zinc-600">Yahoo Finance</span>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Features Section */}
