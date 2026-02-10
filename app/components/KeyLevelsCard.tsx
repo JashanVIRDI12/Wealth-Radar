@@ -38,7 +38,6 @@ type KeyLevelsData = {
 };
 
 type KeyLevelsCardProps = {
-    symbol?: string; // Optional: '^NSEI' for NIFTY, defaults to USDJPY
     apiUrl?: string;
     cacheKey?: CacheKey;
     decimalPlaces?: number;
@@ -46,7 +45,6 @@ type KeyLevelsCardProps = {
 };
 
 export default function KeyLevelsCard({
-    symbol,
     apiUrl,
     cacheKey,
     decimalPlaces,
@@ -56,11 +54,10 @@ export default function KeyLevelsCard({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Determine API endpoint and formatting based on symbol
-    const isNifty = symbol === '^NSEI';
-    const apiEndpoint = apiUrl ?? (isNifty ? `/api/key-levels?symbol=${symbol}` : '/api/key-levels');
-    const displayDecimals = decimalPlaces ?? (isNifty ? 2 : 3); // NIFTY uses 2 decimals, USDJPY uses 3
-    const resolvedCacheKey: CacheKey = cacheKey ?? (isNifty ? 'keyLevelsNifty' : 'keyLevels');
+    // Determine API endpoint and formatting
+    const apiEndpoint = apiUrl ?? '/api/key-levels';
+    const displayDecimals = decimalPlaces ?? 3;
+    const resolvedCacheKey: CacheKey = cacheKey ?? 'keyLevels';
 
     const fetchData = useCallback(async (forceRefresh = false) => {
         try {
@@ -93,15 +90,15 @@ export default function KeyLevelsCard({
     if (loading) {
         return (
             <div className="space-y-3">
-                <div className="h-24 bg-zinc-800/30 rounded-xl animate-pulse"></div>
-                <div className="h-20 bg-zinc-800/30 rounded-xl animate-pulse"></div>
+                <div className="h-24 glass-card rounded-xl animate-pulse"></div>
+                <div className="h-20 glass-card rounded-xl animate-pulse"></div>
             </div>
         );
     }
 
     if (error || !data) {
         return (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="p-4 rounded-xl glass-card text-red-300 text-sm border border-red-500/25 bg-red-500/10 backdrop-blur">
                 {error || 'Unable to load key levels'}
             </div>
         );
@@ -138,18 +135,18 @@ export default function KeyLevelsCard({
     return (
         <div className="space-y-4">
             {/* PDC Bias Header */}
-            <div className={`p-4 rounded-xl bg-gradient-to-r ${getBiasColor()} shadow-lg`}>
+            <div className="p-4 rounded-2xl glass-card backdrop-blur">
                 <div className="flex items-center justify-between">
                     <div>
-                        <div className="text-xs text-white/70 uppercase tracking-wide">Price vs PDC</div>
-                        <div className="text-xl font-bold text-white">{getBiasLabel()}</div>
+                        <div className="kicker">Price vs PDC</div>
+                        <div className={`text-xl font-semibold tracking-tight ${data.priceVsPDC.bias === 'bullish' ? 'text-emerald-300' : 'text-red-300'}`}>{getBiasLabel()}</div>
                     </div>
                     <div className="text-right">
-                        <div className="text-2xl font-bold text-white">
+                        <div className="text-2xl font-semibold text-white tabular-nums">
                             {data.priceVsPDC.position === 'above' ? '+' : '-'}
                             {(data.priceVsPDC.distance * pipScale).toFixed(2)}
                         </div>
-                        <div className="text-xs text-white/70">
+                        <div className="text-xs text-white/45 tabular-nums">
                             {data.priceVsPDC.distancePercent.toFixed(3)}% {data.priceVsPDC.position}
                         </div>
                     </div>
@@ -157,55 +154,53 @@ export default function KeyLevelsCard({
             </div>
 
             {/* Previous Day Levels */}
-            <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/20">
-                <div className="text-xs text-zinc-500 uppercase tracking-wide mb-3">
+            <div className="p-4 rounded-2xl glass-card backdrop-blur">
+                <div className="kicker mb-3">
                     Previous Day Levels ({data.previousDay.date})
                 </div>
 
                 <div className="space-y-2">
                     {/* PDH */}
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-emerald-400">PDH</span>
-                            <span className="text-xs text-zinc-500">Resistance</span>
+                            <span className="text-xs text-white/45">Resistance</span>
                         </div>
-                        <span className="text-sm font-bold text-white">{data.previousDay.high.toFixed(displayDecimals)}</span>
+                        <span className="text-sm font-semibold text-white tabular-nums">{data.previousDay.high.toFixed(displayDecimals)}</span>
                     </div>
 
                     {/* PDC */}
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-amber-400">PDC</span>
-                            <span className="text-xs text-zinc-500">Pivot</span>
+                            <span className="text-xs text-white/45">Pivot</span>
                         </div>
-                        <span className="text-sm font-bold text-white">{data.previousDay.close.toFixed(displayDecimals)}</span>
+                        <span className="text-sm font-semibold text-white tabular-nums">{data.previousDay.close.toFixed(displayDecimals)}</span>
                     </div>
 
                     {/* PDL */}
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-red-400">PDL</span>
-                            <span className="text-xs text-zinc-500">Support</span>
+                            <span className="text-xs text-white/45">Support</span>
                         </div>
-                        <span className="text-sm font-bold text-white">{data.previousDay.low.toFixed(displayDecimals)}</span>
+                        <span className="text-sm font-semibold text-white tabular-nums">{data.previousDay.low.toFixed(displayDecimals)}</span>
                     </div>
                 </div>
 
                 {/* Price Position in Range */}
                 <div className="mt-4">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-zinc-500">Price Position</span>
+                        <span className="kicker">Price Position</span>
                         <span className={`text-xs font-medium ${getZoneColor()}`}>{getZoneLabel()}</span>
                     </div>
-                    <div className="relative h-3 bg-zinc-700/50 rounded-full overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-red-500/30 to-amber-500/30"></div>
-                        <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-r from-amber-500/30 to-emerald-500/30"></div>
+                    <div className="relative h-2 bg-white/10 rounded-full overflow-hidden border border-white/10 backdrop-blur">
                         <div
-                            className="absolute top-0 w-3 h-3 bg-white rounded-full shadow transform -translate-x-1/2 transition-all duration-500"
+                            className="absolute top-0 w-3 h-2 bg-white/90 rounded-full transform -translate-x-1/2 transition-all duration-500"
                             style={{ left: `${Math.max(0, Math.min(100, data.pricePosition.percentInRange))}%` }}
                         ></div>
                     </div>
-                    <div className="flex justify-between mt-1 text-xs text-zinc-600">
+                    <div className="flex justify-between mt-1 text-xs text-white/35">
                         <span>PDL</span>
                         <span>PDC</span>
                         <span>PDH</span>
@@ -214,42 +209,42 @@ export default function KeyLevelsCard({
             </div>
 
             {/* Session High/Low */}
-            <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/20">
+            <div className="p-4 rounded-2xl glass-card backdrop-blur">
                 <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-zinc-500 uppercase tracking-wide">Session Levels</span>
-                    <span className="text-xs text-violet-400 font-medium">Active: {data.activeSession}</span>
+                    <span className="kicker">Session Levels</span>
+                    <span className="text-xs text-white/55 font-medium">Active: {data.activeSession}</span>
                 </div>
 
                 <div className="space-y-2">
                     {data.sessions.filter(s => s.high > 0).map((session) => (
                         <div
                             key={session.name}
-                            className={`p-3 rounded-lg border transition-all ${session.isActive
-                                ? 'bg-violet-500/10 border-violet-500/30'
-                                : 'bg-zinc-800/50 border-zinc-700/30'
+                            className={`p-3 rounded-xl border transition-all backdrop-blur ${session.isActive
+                                ? 'bg-white/10 border-white/15 shadow-[0_10px_30px_-15px_rgba(255,255,255,0.3)]'
+                                : 'glass-card'
                                 }`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-white">{session.name}</span>
+                                    <span className="text-sm font-medium text-white tracking-tight">{session.name}</span>
                                     {session.isActive && (
-                                        <span className="px-1.5 py-0.5 text-xs bg-violet-500/20 text-violet-400 rounded">
+                                        <span className="px-1.5 py-0.5 text-xs bg-white/5 border border-white/10 text-white/70 rounded">
                                             LIVE
                                         </span>
                                     )}
                                 </div>
-                                <div className="text-xs text-zinc-500">
+                                <div className="text-xs text-white/45 tabular-nums">
                                     Range: {(session.range * pipScale).toFixed(2)} pips
                                 </div>
                             </div>
                             <div className="flex items-center justify-between mt-2 text-sm">
                                 <div>
-                                    <span className="text-zinc-500">H </span>
-                                    <span className="text-emerald-400 font-medium">{session.high.toFixed(displayDecimals)}</span>
+                                    <span className="text-white/45">H </span>
+                                    <span className="text-emerald-300 font-medium tabular-nums">{session.high.toFixed(displayDecimals)}</span>
                                 </div>
                                 <div>
-                                    <span className="text-zinc-500">L </span>
-                                    <span className="text-red-400 font-medium">{session.low.toFixed(displayDecimals)}</span>
+                                    <span className="text-white/45">L </span>
+                                    <span className="text-red-300 font-medium tabular-nums">{session.low.toFixed(displayDecimals)}</span>
                                 </div>
                             </div>
                         </div>
@@ -258,13 +253,13 @@ export default function KeyLevelsCard({
             </div>
 
             {/* Current Price */}
-            <div className="flex items-center justify-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/30">
+            <div className="flex items-center justify-center gap-3 p-3 rounded-xl glass-card backdrop-blur">
                 <div className="relative">
                     <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
                     <div className="absolute inset-0 h-2 w-2 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
                 </div>
-                <span className="text-sm text-zinc-400">Current:</span>
-                <span className="text-lg font-bold text-white">{data.currentPrice.toFixed(displayDecimals)}</span>
+                <span className="text-sm text-white/55">Current:</span>
+                <span className="text-lg font-semibold text-white tabular-nums">{data.currentPrice.toFixed(displayDecimals)}</span>
             </div>
         </div>
     );

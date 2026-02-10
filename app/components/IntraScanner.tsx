@@ -275,19 +275,7 @@ export default function IntraScanner({
         );
     }
 
-    const getBiasGradient = () => {
-        if (signal.overallBias.includes('bullish')) return 'from-emerald-500 to-teal-600';
-        if (signal.overallBias.includes('bearish')) return 'from-red-500 to-rose-600';
-        return 'from-amber-500 to-orange-600';
-    };
-
     const getBiasLabel = () => signal.overallBias.replace('_', ' ').toUpperCase();
-
-    const getTfBiasBg = (bias: string) => {
-        if (bias === 'bullish') return 'bg-emerald-500/10 border-emerald-500/30';
-        if (bias === 'bearish') return 'bg-red-500/10 border-red-500/30';
-        return 'bg-amber-500/10 border-amber-500/30';
-    };
 
     const getTrendIcon = (trend: string) => {
         if (trend === 'up') return '↑';
@@ -306,22 +294,22 @@ export default function IntraScanner({
     return (
         <div className="space-y-4">
             {/* Bias Header */}
-            <div className={`p-4 rounded-xl bg-gradient-to-r ${getBiasGradient()} shadow-lg`}>
+            <div className="p-4 rounded-xl panel">
                 <div className="flex items-start justify-between mb-3">
                     <div>
-                        <div className="text-xs text-white/70 uppercase tracking-wide">Intraday Bias</div>
-                        <div className="text-xl font-bold text-white">{getBiasLabel()}</div>
+                        <div className="kicker">Intraday Bias</div>
+                        <div className="text-xl font-semibold text-white tracking-tight">{getBiasLabel()}</div>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="text-right">
-                            <div className="text-3xl font-bold text-white">
+                            <div className="text-3xl font-semibold text-white tabular-nums">
                                 {signal.score > 0 ? '+' : ''}{signal.score}
                             </div>
-                            <div className="text-xs text-white/70">Score</div>
+                            <div className="kicker">Score</div>
                         </div>
                         <button
                             onClick={() => setShowDetails(true)}
-                            className="px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-all flex items-center gap-1"
+                            className="px-2.5 py-1.5 rounded-lg bg-white/3 hover:bg-white/5 border border-white/5 text-white/80 hover:text-white text-xs font-medium transition-colors flex items-center gap-1"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -332,15 +320,13 @@ export default function IntraScanner({
                 </div>
 
                 {/* Score Bar */}
-                <div className="relative h-3 bg-black/30 rounded-full overflow-hidden">
-                    <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-red-500 to-amber-500 opacity-50"></div>
-                    <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-r from-amber-500 to-emerald-500 opacity-50"></div>
+                <div className="relative h-2 bg-black/25 rounded-full overflow-hidden border border-white/5">
                     <div
-                        className="absolute top-0 w-4 h-3 bg-white rounded-full shadow-lg transform -translate-x-1/2 transition-all duration-500"
+                        className="absolute top-0 w-3 h-2 bg-white/80 rounded-full transform -translate-x-1/2 transition-all duration-500"
                         style={{ left: `${barPosition}%` }}
                     ></div>
                 </div>
-                <div className="flex justify-between mt-1 text-xs text-white/50">
+                <div className="flex justify-between mt-1 text-xs text-white/45">
                     <span>Bearish</span>
                     <span>Neutral</span>
                     <span>Bullish</span>
@@ -350,31 +336,28 @@ export default function IntraScanner({
             {/* Multi-Timeframe Breakdown */}
             <div className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                    <div className="text-xs text-zinc-500 uppercase tracking-wide">MTF Breakdown</div>
-                    <div className="text-xs text-violet-400">{signal.mtfAlignment.percentage}% aligned</div>
+                    <div className="kicker">MTF Breakdown</div>
+                    <div className="text-xs text-white/55 tabular-nums">{signal.mtfAlignment.percentage}% aligned</div>
                 </div>
 
                 {signal.mtfTimeframes.map((tf) => (
                     <div
                         key={tf.timeframe}
-                        className={`p-3 rounded-xl border transition-all ${getTfBiasBg(tf.bias)}`}
+                        className="p-3 rounded-xl border border-white/5 bg-black/20"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold ${getTfBiasColor(tf.bias)} bg-zinc-900/50`}>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg font-semibold ${getTfBiasColor(tf.bias)} bg-white/3 border border-white/5`}>
                                     {getTrendIcon(tf.trend)}
                                 </div>
                                 <div>
-                                    <div className="text-sm font-semibold text-white">{tf.label}</div>
-                                    <div className="text-xs text-zinc-500">
+                                    <div className="text-sm font-semibold text-white tracking-tight">{tf.label}</div>
+                                    <div className="text-xs text-white/45 tabular-nums">
                                         EMA {tf.ema20.toFixed(2)} {tf.ema20 > tf.ema50 ? '>' : '<'} {tf.ema50.toFixed(2)} • RSI {tf.rsi.toFixed(1)}
                                     </div>
                                 </div>
                             </div>
-                            <span className={`text-xs font-medium px-2 py-1 rounded ${tf.bias === 'bullish' ? 'bg-emerald-500/20 text-emerald-400' :
-                                    tf.bias === 'bearish' ? 'bg-red-500/20 text-red-400' :
-                                        'bg-amber-500/20 text-amber-400'
-                                }`}>
+                            <span className={`text-xs font-medium px-2 py-1 rounded border border-white/10 bg-white/5 ${getTfBiasColor(tf.bias)}`}>
                                 {tf.bias.toUpperCase()}
                             </span>
                         </div>
@@ -383,26 +366,26 @@ export default function IntraScanner({
             </div>
 
             {/* Nearest Level */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5">
                 <div>
-                    <div className="text-xs text-zinc-500">Nearest {signal.nearestLevel.type.includes('Support') ? 'Support' : 'Resistance'}</div>
-                    <div className="text-sm font-bold text-white">{signal.nearestLevel.value.toFixed(3)}</div>
+                    <div className="kicker">Nearest {signal.nearestLevel.type.includes('Support') ? 'Support' : 'Resistance'}</div>
+                    <div className="text-sm font-semibold text-white tabular-nums">{signal.nearestLevel.value.toFixed(3)}</div>
                 </div>
                 <div className="text-right">
-                    <div className="text-xs text-zinc-500">Distance</div>
-                    <div className="text-sm font-medium text-violet-400">
+                    <div className="kicker">Distance</div>
+                    <div className="text-sm font-medium text-white/75 tabular-nums">
                         {signal.nearestLevel.distance.toFixed(3)} ({signal.nearestLevel.distancePercent.toFixed(2)}%)
                     </div>
                 </div>
             </div>
 
             {/* Trading Idea */}
-            <div className="p-3 rounded-xl bg-zinc-800/30 border border-zinc-700/20">
+            <div className="p-3 rounded-xl bg-black/20 border border-white/5">
                 <div className="flex items-start gap-2">
                     <span className="text-lg">💡</span>
                     <div>
-                        <div className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Trading Idea</div>
-                        <p className="text-sm text-zinc-300">{signal.tradingIdea}</p>
+                        <div className="kicker mb-1">Trading Idea</div>
+                        <p className="text-sm text-white/70">{signal.tradingIdea}</p>
                     </div>
                 </div>
             </div>
@@ -410,11 +393,11 @@ export default function IntraScanner({
             {/* Details Modal */}
             {showDetails && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDetails(false)}>
-                    <div className="bg-zinc-900 rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto border border-zinc-700/50 shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-black/85 rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto border border-white/10 shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h3 className="text-xl font-bold text-white">Bias Breakdown</h3>
-                                <p className="text-sm text-zinc-500">Why the signal is {getBiasLabel()}</p>
+                                <h3 className="text-xl font-semibold text-white tracking-tight">Bias Breakdown</h3>
+                                <p className="text-sm text-white/55">Why the signal is {getBiasLabel()}</p>
                             </div>
                             <button onClick={() => setShowDetails(false)} className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -436,22 +419,22 @@ export default function IntraScanner({
                         {/* Detailed Reasons */}
                         <div className="space-y-3">
                             {signal.detailedReasons.map((reason, i) => (
-                                <div key={i} className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/30">
+                                <div key={i} className="p-4 rounded-xl bg-black/25 border border-white/10">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-sm font-medium text-white">{reason.factor}</span>
                                         <span className={`text-sm font-bold ${reason.score > 0 ? 'text-emerald-400' : reason.score < 0 ? 'text-red-400' : 'text-zinc-400'}`}>
                                             {reason.score > 0 ? '+' : ''}{reason.score}
                                         </span>
                                     </div>
-                                    <div className="text-sm text-violet-400 mb-1">{reason.value}</div>
-                                    <p className="text-xs text-zinc-500">{reason.explanation}</p>
+                                    <div className="text-sm text-white/80 mb-1">{reason.value}</div>
+                                    <p className="text-xs text-white/45">{reason.explanation}</p>
                                 </div>
                             ))}
                         </div>
 
                         <button
                             onClick={() => setShowDetails(false)}
-                            className="w-full mt-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors"
+                            className="w-full mt-6 py-3 rounded-xl bg-white/5 hover:bg-white/8 border border-white/10 text-white font-medium transition-colors"
                         >
                             Got it
                         </button>

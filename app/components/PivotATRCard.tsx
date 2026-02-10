@@ -98,12 +98,6 @@ export default function PivotATRCard({
         );
     }
 
-    const getVolatilityColor = () => {
-        if (data.atr.volatility === 'high') return 'from-red-500 to-rose-600';
-        if (data.atr.volatility === 'medium') return 'from-amber-500 to-orange-600';
-        return 'from-emerald-500 to-teal-600';
-    };
-
     const getVolatilityLabel = () => {
         if (data.atr.volatility === 'high') return 'High Volatility';
         if (data.atr.volatility === 'medium') return 'Normal';
@@ -127,38 +121,35 @@ export default function PivotATRCard({
         return 'Strongly Bearish Zone';
     };
 
-    // Calculate range used percentage bar
-    const rangeUsedPercent = Math.min(100, data.rangeAnalysis.atrPercent);
-
     const atrPips = data.atr.value * pipScale;
     const nearestDistancePips = data.pricePosition.distance * pipScale;
 
     return (
         <div className="space-y-4">
             {/* ATR & Volatility Header */}
-            <div className={`p-4 rounded-xl bg-gradient-to-r ${getVolatilityColor()} shadow-lg`}>
+            <div className="p-4 rounded-xl bg-black/20 border border-white/5">
                 <div className="flex items-center justify-between">
                     <div>
-                        <div className="text-xs text-white/70 uppercase tracking-wide">Volatility (ATR 14)</div>
-                        <div className="text-xl font-bold text-white">{getVolatilityLabel()}</div>
+                        <div className="kicker">Volatility (ATR 14)</div>
+                        <div className={`text-xl font-semibold tracking-tight ${data.atr.volatility === 'high' ? 'text-red-300' : data.atr.volatility === 'medium' ? 'text-amber-300' : 'text-emerald-300'}`}>{getVolatilityLabel()}</div>
                     </div>
                     <div className="text-right">
-                        <div className="text-3xl font-bold text-white">{atrPips.toFixed(2)}</div>
-                        <div className="text-xs text-white/70">pips expected range</div>
+                        <div className="text-3xl font-semibold text-white tabular-nums">{atrPips.toFixed(2)}</div>
+                        <div className="text-xs text-white/45">pips expected range</div>
                     </div>
                 </div>
             </div>
 
             {/* Price Position */}
-            <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+            <div className="p-3 rounded-xl bg-black/20 border border-white/5">
                 <div className="flex items-center justify-between">
                     <div>
-                        <div className="text-xs text-zinc-500">Price Zone</div>
+                        <div className="kicker">Price Zone</div>
                         <div className={`text-lg font-bold ${getZoneColor()}`}>{getZoneLabel()}</div>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs text-zinc-500">Nearest: {data.pricePosition.nearestLevel}</div>
-                        <div className="text-sm font-medium text-violet-400">
+                        <div className="kicker">Nearest: {data.pricePosition.nearestLevel}</div>
+                        <div className="text-sm font-medium text-white/75 tabular-nums">
                             {data.pricePosition.nearestValue.toFixed(decimalPlaces)} ({nearestDistancePips.toFixed(2)} pips)
                         </div>
                     </div>
@@ -167,45 +158,45 @@ export default function PivotATRCard({
 
             {/* Pivot Levels Grid */}
             <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wide mb-2 px-1">Support & Resistance</div>
+                <div className="kicker mb-2 px-1">Support & Resistance</div>
                 <div className="grid grid-cols-2 gap-2">
                     {/* Resistance Levels */}
                     <div className="space-y-1">
-                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
                             <span className="text-xs text-emerald-400 font-medium">R3</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.r3.toFixed(decimalPlaces)}</span>
+                            <span className="text-sm font-semibold text-white tabular-nums">{data.pivots.r3.toFixed(decimalPlaces)}</span>
                         </div>
-                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
                             <span className="text-xs text-emerald-400 font-medium">R2</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.r2.toFixed(decimalPlaces)}</span>
+                            <span className="text-sm font-semibold text-white tabular-nums">{data.pivots.r2.toFixed(decimalPlaces)}</span>
                         </div>
-                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
                             <span className="text-xs text-emerald-400 font-medium">R1</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.r1.toFixed(decimalPlaces)}</span>
+                            <span className="text-sm font-semibold text-white tabular-nums">{data.pivots.r1.toFixed(decimalPlaces)}</span>
                         </div>
                     </div>
 
                     {/* Support Levels */}
                     <div className="space-y-1">
-                        <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
                             <span className="text-xs text-red-400 font-medium">S1</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.s1.toFixed(decimalPlaces)}</span>
+                            <span className="text-sm font-semibold text-white tabular-nums">{data.pivots.s1.toFixed(decimalPlaces)}</span>
                         </div>
-                        <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
                             <span className="text-xs text-red-400 font-medium">S2</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.s2.toFixed(decimalPlaces)}</span>
+                            <span className="text-sm font-semibold text-white tabular-nums">{data.pivots.s2.toFixed(decimalPlaces)}</span>
                         </div>
-                        <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
                             <span className="text-xs text-red-400 font-medium">S3</span>
-                            <span className="text-sm font-bold text-white">{data.pivots.s3.toFixed(decimalPlaces)}</span>
+                            <span className="text-sm font-semibold text-white tabular-nums">{data.pivots.s3.toFixed(decimalPlaces)}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Pivot Point */}
-                <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
-                    <span className="text-sm text-amber-400 font-medium">Pivot Point (PP)</span>
-                    <span className="text-lg font-bold text-white">{data.pivots.pp.toFixed(decimalPlaces)}</span>
+                <div className="mt-2 p-3 rounded-lg bg-black/20 border border-white/5 flex items-center justify-between">
+                    <span className="text-sm text-white/70 font-medium">Pivot Point (PP)</span>
+                    <span className="text-lg font-semibold text-white tabular-nums">{data.pivots.pp.toFixed(decimalPlaces)}</span>
                 </div>
             </div>
 

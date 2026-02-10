@@ -91,7 +91,6 @@ export default function QuickBiasPanel({
 }: QuickBiasPanelProps) {
     const [stats, setStats] = useState<QuickStats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [countdown, setCountdown] = useState(120);
 
     const fetchData = useCallback(async (forceRefresh = false) => {
         try {
@@ -108,7 +107,6 @@ export default function QuickBiasPanel({
             console.error('Failed to fetch indicators', err);
         } finally {
             setLoading(false);
-            setCountdown(60);
         }
     }, [apiUrl, cacheKey]);
 
@@ -126,15 +124,6 @@ export default function QuickBiasPanel({
         return () => clearInterval(refreshInterval);
     }, [fetchData]);
 
-    // Countdown timer
-    useEffect(() => {
-        const countdownInterval = setInterval(() => {
-            setCountdown(prev => (prev > 0 ? prev - 1 : 120));
-        }, 1000);
-
-        return () => clearInterval(countdownInterval);
-    }, []);
-
     if (loading) {
         return (
             <div className="flex items-center gap-4 p-3 rounded-xl bg-zinc-800/50 animate-pulse">
@@ -146,10 +135,10 @@ export default function QuickBiasPanel({
 
     if (!stats) return null;
 
-    const getBiasGradient = () => {
-        if (stats.dailyBias === 'buy') return 'from-emerald-500 to-teal-600';
-        if (stats.dailyBias === 'sell') return 'from-red-500 to-rose-600';
-        return 'from-amber-500 to-orange-600';
+    const getBiasAccent = () => {
+        if (stats.dailyBias === 'buy') return 'text-emerald-300';
+        if (stats.dailyBias === 'sell') return 'text-red-300';
+        return 'text-amber-300';
     };
 
     const getBiasIcon = () => {
@@ -158,20 +147,14 @@ export default function QuickBiasPanel({
         return '—';
     };
 
-    const getPriceChangeColor = () => {
-        if (stats.priceChange > 0) return 'text-emerald-400';
-        if (stats.priceChange < 0) return 'text-red-400';
-        return 'text-zinc-400';
-    };
-
     return (
         <div className="flex items-center gap-4 flex-wrap">
             {/* Main Bias Badge */}
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${getBiasGradient()} shadow-lg`}>
-                <span className="text-2xl font-bold text-white">{getBiasIcon()}</span>
+            <div className="flex items-center gap-3 px-4 py-2 rounded-xl panel panel-compact">
+                <span className={`text-2xl font-semibold ${getBiasAccent()}`}>{getBiasIcon()}</span>
                 <div>
-                    <div className="text-xs text-white/70">Intraday Bias</div>
-                    <div className="text-sm font-bold text-white uppercase">{stats.dailyBias}</div>
+                    <div className="kicker">Intraday Bias</div>
+                    <div className={`text-sm font-semibold uppercase tracking-wide ${getBiasAccent()}`}>{stats.dailyBias}</div>
                 </div>
             </div>
 

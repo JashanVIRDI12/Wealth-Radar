@@ -145,7 +145,7 @@ export default function AISummaryCard({
 
     if (loading) {
         return (
-            <div className="glass-card rounded-2xl p-6">
+            <div className="panel rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-xl bg-zinc-800 animate-pulse"></div>
                     <div>
@@ -163,9 +163,9 @@ export default function AISummaryCard({
 
     if (error && !summary) {
         return (
-            <div className="glass-card rounded-2xl p-6">
+            <div className="panel rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
@@ -179,9 +179,9 @@ export default function AISummaryCard({
 
     if (!summary) {
         return (
-            <div className="glass-card rounded-2xl p-6">
+            <div className="panel rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
@@ -209,12 +209,12 @@ export default function AISummaryCard({
     } = summary;
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden">
+        <div className="panel rounded-2xl overflow-hidden">
             {/* Header */}
-            <div className="p-6 border-b border-zinc-800/50">
+            <div className="p-6 border-b border-white/5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
                             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
@@ -237,13 +237,13 @@ export default function AISummaryCard({
                             onClick={() => fetchSummary(true)}
                             disabled={isRegenerating}
                             className={`p-2.5 rounded-xl border transition-all ${isRegenerating
-                                    ? 'bg-violet-500/20 border-violet-500/30 cursor-not-allowed'
-                                    : 'bg-zinc-800/50 border-zinc-700/30 hover:bg-violet-500/20 hover:border-violet-500/30'
+                                    ? 'bg-white/5 border-white/10 cursor-not-allowed'
+                                    : 'bg-white/3 border-white/10 hover:bg-white/5'
                                 }`}
                             title="Regenerate AI Summary"
                         >
                             <svg
-                                className={`w-5 h-5 text-violet-400 ${isRegenerating ? 'animate-spin' : ''}`}
+                                className={`w-5 h-5 text-white/70 ${isRegenerating ? 'animate-spin' : ''}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -252,31 +252,27 @@ export default function AISummaryCard({
                             </svg>
                         </button>
                         {/* Bias Badge */}
-                        <div className={`px-4 py-2 rounded-xl bg-gradient-to-r ${getBiasGradient(marketBias)} shadow-lg`}>
-                            <span className="text-white font-bold text-lg">
-                                {marketBias.toUpperCase()}
-                            </span>
-                            <span className="text-white/70 text-sm ml-2">
-                                ({biasStrength})
-                            </span>
+                        <div className="px-4 py-2 rounded-xl bg-white/3 border border-white/10">
+                            <span className={`text-sm font-semibold tracking-wide ${getBiasColor(marketBias)}`}>{marketBias.toUpperCase()}</span>
+                            <span className="text-white/45 text-sm ml-2">({biasStrength})</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Executive Summary */}
-            <div className="p-6 bg-zinc-800/20 border-b border-zinc-800/50">
-                <p className="text-zinc-300 leading-relaxed">{executiveSummary}</p>
-                <p className="text-xs text-zinc-600 mt-2">Generated at {formatTime(generatedAt)}</p>
+            <div className="p-6 bg-black/10 border-b border-white/5">
+                <p className="text-white/70 leading-relaxed">{executiveSummary}</p>
+                <p className="text-xs text-white/35 mt-2">Generated at {formatTime(generatedAt)}</p>
             </div>
 
             {/* Trading Recommendation - Prominent */}
-            <div className={`p-6 border-b border-zinc-800/50 ${getActionBg(tradingRecommendation.action)}`}>
+            <div className={`p-6 border-b border-white/5 ${getActionBg(tradingRecommendation.action)}`}>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <div className="text-xs text-zinc-500 uppercase tracking-wide mb-2">Recommendation</div>
+                        <div className="kicker mb-2">Recommendation</div>
                         <div className="flex items-center gap-4">
-                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getActionGradient(tradingRecommendation.action)} flex items-center justify-center shadow-lg`}>
+                            <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
                                 <span className="text-white font-bold text-xl">
                                     {tradingRecommendation.action === 'buy' ? '↑' :
                                         tradingRecommendation.action === 'sell' ? '↓' :
@@ -295,8 +291,8 @@ export default function AISummaryCard({
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs text-zinc-500">Timeframe</div>
-                        <div className="text-lg font-medium text-zinc-300">{tradingRecommendation.timeframe}</div>
+                        <div className="kicker">Timeframe</div>
+                        <div className="text-lg font-medium text-white/70">{tradingRecommendation.timeframe}</div>
                     </div>
                 </div>
                 <p className="text-sm text-zinc-400 mt-4 leading-relaxed">{tradingRecommendation.reasoning}</p>

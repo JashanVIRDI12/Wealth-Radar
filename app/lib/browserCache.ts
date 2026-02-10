@@ -19,7 +19,6 @@ export const CACHE_DURATIONS = {
     mtf: 2,                // Server: 2 min (Multi-timeframe alignment)
     eurusdMtf: 2,
     keyLevels: 5,          // Server: 5 min (PDH/PDL/PDC & Session levels - USDJPY)
-    keyLevelsNifty: 5,     // Server: 5 min (PDH/PDL/PDC & Session levels - NIFTY)
     eurusdKeyLevels: 5,
     macro: 60 * 23,        // Server: 24h (cache for 23h on browser)
     news: 12,              // Server: 15 min
